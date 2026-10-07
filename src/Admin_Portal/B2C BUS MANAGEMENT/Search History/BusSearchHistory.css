@@ -1,0 +1,339 @@
+.admin-search-history-page {
+  gap: 12px;
+}
+
+.admin-search-history-header h1 {
+  font-size: 1.35rem !important;
+}
+
+.admin-search-history-chip {
+  background: var(--admin-success-soft);
+  border-color: var(--admin-border);
+  color: var(--admin-success);
+}
+
+.admin-search-history-toolbar .admin-actions-row {
+  gap: 6px;
+}
+
+.admin-search-history-delete {
+  background: linear-gradient(135deg, var(--admin-primary), var(--admin-primary-strong)) !important;
+  color: #ffffff !important;
+}
+
+.admin-search-filters {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-end !important;
+  gap: 12px !important;
+  flex-wrap: wrap !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  padding: 14px 18px !important;
+  margin-bottom: 20px !important;
+  box-shadow: 0 4px 12px rgba(16, 34, 58, 0.04) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.admin-search-filters label {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  flex: 1 !important;
+  min-width: 130px !important;
+  margin: 0 !important;
+}
+
+.admin-search-filters label span {
+  font-size: 0.76rem !important;
+  font-weight: 600 !important;
+  color: #64748b !important;
+  white-space: nowrap !important;
+}
+
+.admin-search-filters label input {
+  padding: 6px 12px !important;
+  border-radius: 8px !important;
+  border: 1px solid #cbd5e1 !important;
+  outline: none !important;
+  font-size: 0.82rem !important;
+  height: 36px !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  background: #ffffff !important;
+  color: #1e293b !important;
+}
+
+.admin-search-filters label input:focus {
+  border-color: #A51C49 !important;
+  box-shadow: 0 0 0 2px rgba(165, 28, 73, 0.1) !important;
+}
+
+.admin-search-filters .filters-actions {
+  display: flex !important;
+  gap: 8px !important;
+  align-items: center !important;
+  margin: 0 !important;
+  padding-bottom: 1px !important;
+}
+
+.admin-search-filters .filters-actions button.primary {
+  padding: 0 18px !important;
+  border-radius: 8px !important;
+  border: none !important;
+  background-color: #A51C49 !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  font-size: 0.81rem !important;
+  cursor: pointer !important;
+  height: 36px !important;
+  white-space: nowrap !important;
+  transition: all 0.2s ease !important;
+}
+
+.admin-search-filters .filters-actions button.primary:hover {
+  background-color: #851237 !important;
+}
+
+.admin-search-filters .filters-actions button.secondary {
+  padding: 0 18px !important;
+  border-radius: 8px !important;
+  border: 1px solid #cbd5e1 !important;
+  background-color: #ffffff !important;
+  color: #334155 !important;
+  font-weight: 600 !important;
+  font-size: 0.81rem !important;
+  cursor: pointer !important;
+  height: 36px !important;
+  white-space: nowrap !important;
+  transition: all 0.2s ease !important;
+}
+
+.admin-search-filters .filters-actions button.secondary:hover {
+  background-color: #f8fafc !important;
+  border-color: #94a3b8 !important;
+}
+
+.admin-search-history-table-shell {
+  border: 1px solid var(--admin-border);
+  border-radius: 13px;
+  overflow: hidden;
+  background: var(--admin-surface);
+  box-shadow: 0 10px 20px rgba(16, 34, 58, 0.08);
+}
+
+.admin-search-history-table-head {
+  display: grid;
+  grid-template-columns: 0.38fr 0.82fr 0.75fr 1.6fr 0.9fr 0.65fr;
+  gap: 8px;
+  padding: 6px 14px !important;
+  min-height: 28px !important;
+  background: #A51C49 !important;
+  border-radius: 12px 12px 0 0 !important;
+  align-items: center !important;
+}
+
+.admin-search-history-table-head span {
+  min-height: 28px;
+  background: transparent !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #ffffff !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  text-align: center !important;
+  text-transform: none !important;
+  letter-spacing: 0.02em !important;
+}
+
+.admin-search-history-table-body {
+  display: grid;
+}
+
+.admin-search-history-row {
+  display: grid;
+  grid-template-columns: 0.38fr 0.82fr 0.75fr 1.6fr 0.9fr 0.65fr;
+  gap: 8px;
+  padding: 8px;
+  border-top: 1px solid var(--admin-border);
+}
+
+.admin-search-history-cell {
+  min-height: 36px;
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+  background: var(--admin-surface);
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 3px;
+  color: var(--admin-text);
+  font-size: 11px;
+}
+
+.admin-search-history-cell strong {
+  color: var(--admin-text);
+  font-size: 11px;
+  font-weight: 500 !important;
+}
+
+.admin-search-history-empty {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  color: var(--admin-muted);
+  font-size: 1.02rem;
+  background: var(--admin-surface);
+}
+
+.admin-search-history-pagination {
+  min-height: 42px;
+  border-top: 1px solid var(--admin-border);
+  background: var(--admin-soft);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 0 10px;
+  flex-wrap: wrap;
+}
+
+.admin-search-history-pagination button {
+  min-width: 34px;
+  min-height: 30px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  font-size: 0.83rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-search-history-pagination button.active {
+  border-color: var(--admin-primary);
+  background: linear-gradient(135deg, var(--admin-primary), var(--admin-primary-strong));
+  color: #fff;
+}
+
+.admin-search-history-pagination button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1100px) {
+  .admin-search-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .admin-search-history-table-head,
+  .admin-search-history-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .admin-search-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-search-history-table-head,
+  .admin-search-history-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-search-history-chip {
+  background: rgba(190, 24, 93, 0.05) !important;
+  border-color: #A51C49 !important;
+  color: #A51C49 !important;
+  padding: 6px 14px !important;
+  border-radius: 100px !important;
+  font-weight: 600 !important;
+}
+
+.admin-search-history-toolbar .admin-actions-row button {
+  background: #ffffff !important;
+  color: #A51C49 !important;
+  border: 1.5px solid #A51C49 !important;
+  border-radius: 20px !important;
+  padding: 6px 16px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.admin-search-history-toolbar .admin-actions-row button:hover {
+  background: #A51C49 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(190, 24, 93, 0.2) !important;
+}
+
+.admin-search-history-delete {
+  background: #A51C49 !important;
+  color: #ffffff !important;
+  border: 1.5px solid #A51C49 !important;
+  border-radius: 20px !important;
+  padding: 6px 16px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.admin-search-history-delete:hover {
+  background: #851237 !important;
+  border-color: #851237 !important;
+  box-shadow: 0 4px 12px rgba(165, 28, 73, 0.2) !important;
+}
+
+.admin-search-history-toolbar .admin-actions-row button.admin-search-history-export-btn {
+  background: #10b981 !important;
+  border-color: #10b981 !important;
+  color: #ffffff !important;
+}
+
+.admin-search-history-toolbar .admin-actions-row button.admin-search-history-export-btn:hover {
+  background: #059669 !important;
+  border-color: #059669 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+}
+
+.admin-search-history-toolbar .admin-actions-row button.admin-search-history-filter-btn {
+  background: #A51C49 !important;
+  border-color: #A51C49 !important;
+  color: #ffffff !important;
+}
+
+.admin-search-history-toolbar .admin-actions-row button.admin-search-history-filter-btn:hover {
+  background: #851237 !important;
+  border-color: #851237 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(165, 28, 73, 0.2) !important;
+}
+
+.admin-search-history-view-btn {
+  background: #fff0f3 !important;
+  color: #A51C49 !important;
+  border: 1.5px solid #A51C49 !important;
+  border-radius: 8px !important;
+  padding: 5px 14px !important;
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.admin-search-history-view-btn:hover {
+  background: #A51C49 !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(165, 28, 73, 0.25) !important;
+}
+

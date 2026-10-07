@@ -1,0 +1,1239 @@
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import "./AllPages.css";
+import { useNavigate } from "react-router-dom";
+import { getAdminPages, createAdminPage, deleteAdminPage, updateAdminPage, resolveCmsImageUrl } from "../../../services/cmsPageService";
+import { NgrokSafeImage } from "../../../services/apiClient";
+import AdminPagination from "../../../components/AdminPagination";
+import { Eye, Edit2, Trash2, X, ChevronDown, FileText, AlertTriangle, Upload, Check, Image as ImageIcon } from 'lucide-react';
+
+const CalendarIcon = ({ size = 18 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    style={{ flexShrink: 0, verticalAlign: "middle", display: "inline-block" }}
+  >
+    <rect x="2.5" y="4.5" width="19" height="17" rx="3" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1" />
+    <path d="M2.5 7.5C2.5 5.84315 3.84315 4.5 5.5 4.5H18.5C20.1569 4.5 21.5 5.84315 21.5 7.5V9.5H2.5V7.5Z" fill="url(#calHeaderGradAllPages)" />
+    <defs>
+      <linearGradient id="calHeaderGradAllPages" x1="2.5" y1="4.5" x2="21.5" y2="9.5" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#4f46e5" />
+        <stop offset="100%" stopColor="#2563eb" />
+      </linearGradient>
+    </defs>
+    <rect x="5.5" y="2.5" width="1.8" height="3.5" rx="0.9" fill="#94a3b8" />
+    <rect x="9.5" y="2.5" width="1.8" height="3.5" rx="0.9" fill="#94a3b8" />
+    <rect x="13.5" y="2.5" width="1.8" height="3.5" rx="0.9" fill="#94a3b8" />
+    <rect x="17.5" y="2.5" width="1.8" height="3.5" rx="0.9" fill="#94a3b8" />
+    
+    <rect x="5.5" y="11.5" width="2.2" height="2.2" rx="0.5" fill="#cbd5e1" />
+    <rect x="9.5" y="11.5" width="2.2" height="2.2" rx="0.5" fill="#cbd5e1" />
+    <rect x="13.5" y="11.5" width="2.2" height="2.2" rx="0.5" fill="#cbd5e1" />
+    <rect x="17.5" y="11.5" width="2.2" height="2.2" rx="0.5" fill="#cbd5e1" />
+    
+    <rect x="5.5" y="15.5" width="2.2" height="2.2" rx="0.5" fill="#cbd5e1" />
+    <rect x="9.5" y="15.5" width="2.2" height="2.2" rx="0.5" fill="#2563eb" />
+    <rect x="13.5" y="15.5" width="2.2" height="2.2" rx="0.5" fill="#cbd5e1" />
+    <rect x="17.5" y="15.5" width="2.2" height="2.2" rx="0.5" fill="#cbd5e1" />
+  </svg>
+);
+
+const AllPages = () => {
+  const navigate = useNavigate();
+  const pageCreatePath = "/admin/page-management/add-page";
+
+  const [pages, setPages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedPage, setSelectedPage] = useState(null);
+  const [editingPage, setEditingPage] = useState(null);
+  const [deletingPage, setDeletingPage] = useState(null);
+  const [activePopupImage, setActivePopupImage] = useState(null);
+  const [activeDropdownId, setActiveDropdownId] = useState(null);
+  const [showFullDescription, setShowFullDescription] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const [editFormData, setEditFormData] = useState({
+    title: "",
+    slug: "",
+    status: "Active",
+    module: "All",
+    metaTitle: "",
+    metaKeyword: "",
+    metaDescription: "",
+    description: "",
+    imageName: "",
+    bannerName: "",
+  });
+  const [editImageFile, setEditImageFile] = useState(null);
+  const [editBannerFile, setEditBannerFile] = useState(null);
+  const [isEditImageRemoved, setIsEditImageRemoved] = useState(false);
+  const [isEditBannerRemoved, setIsEditBannerRemoved] = useState(false);
+  const [editImagePreview, setEditImagePreview] = useState("");
+  const [editBannerPreview, setEditBannerPreview] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  useEffect(() => {
+    const handleOutsideClick = () => setActiveDropdownId(null);
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
+  }, []);
+
+  const normalizeKey = (str) => String(str || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
+
+  const getStoredStatusOverrides = () => {
+    try {
+      return JSON.parse(localStorage.getItem("cms_page_status_overrides") || "{}");
+    } catch {
+      return {};
+    }
+  };
+
+  const setStoredStatusOverride = (slugOrId, status) => {
+    try {
+      const current = getStoredStatusOverrides();
+      if (slugOrId) {
+        current[slugOrId] = status;
+        const norm = normalizeKey(slugOrId);
+        if (norm) current[norm] = status;
+      }
+      localStorage.setItem("cms_page_status_overrides", JSON.stringify(current));
+    } catch (e) {
+      console.warn("Failed to save status override:", e);
+    }
+  };
+
+  const getStoredDeletedSlugs = () => {
+    try {
+      return JSON.parse(localStorage.getItem("cms_page_deleted_slugs") || "[]");
+    } catch {
+      return [];
+    }
+  };
+
+  const addStoredDeletedSlug = (slugOrId) => {
+    try {
+      const current = getStoredDeletedSlugs();
+      if (slugOrId && !current.includes(slugOrId)) {
+        current.push(slugOrId);
+        const norm = normalizeKey(slugOrId);
+        if (norm && !current.includes(norm)) current.push(norm);
+        localStorage.setItem("cms_page_deleted_slugs", JSON.stringify(current));
+      }
+    } catch (e) {
+      console.warn("Failed to save deleted slug:", e);
+    }
+  };
+
+  const handleToggleStatus = async (pageToUpdate) => {
+    const currentStatus = String(pageToUpdate.status || "Active").toLowerCase();
+    const newStatus = currentStatus === "active" ? "Inactive" : "Active";
+    const slugKey = pageToUpdate.slug || pageToUpdate.id;
+
+    setStoredStatusOverride(slugKey, newStatus);
+    if (pageToUpdate.id) {
+      setStoredStatusOverride(pageToUpdate.id, newStatus);
+    }
+
+    setPages(prevPages =>
+      prevPages.map(p => (p.slug === pageToUpdate.slug || p.id === pageToUpdate.id) ? { ...p, status: newStatus } : p)
+    );
+
+    if (pageToUpdate.id && !String(pageToUpdate.id).startsWith("default-")) {
+      try {
+        const formData = new FormData();
+        formData.append("Title", pageToUpdate.title || "");
+        formData.append("Slug", pageToUpdate.slug || "");
+        formData.append("Status", newStatus);
+        formData.append("Module", pageToUpdate.module || "All");
+        formData.append("Description", pageToUpdate.description || "");
+
+        await updateAdminPage(pageToUpdate.id, formData);
+      } catch (err) {
+        console.error("Error toggling page status on backend:", err);
+      }
+    }
+  };
+
+  const loadPages = async () => {
+    try {
+      setLoading(true);
+      const data = await getAdminPages();
+      const normalizedData = Array.isArray(data) ? data : (data?.data || data?.pages || data?.list || []);
+
+      const deletedSlugs = getStoredDeletedSlugs();
+
+      const filteredMerged = normalizedData.filter(
+        (p) => !deletedSlugs.includes(p.slug) && !deletedSlugs.includes(p.id) && !deletedSlugs.includes(normalizeKey(p.slug))
+      );
+
+      const overrides = getStoredStatusOverrides();
+
+      const finalPages = filteredMerged.map((p) => {
+        const pSlug = p.slug || "";
+        const pTitle = p.title || "";
+        const pId = String(p.id || "");
+
+        const overrideStatus =
+          overrides[pSlug] ||
+          overrides[normalizeKey(pSlug)] ||
+          overrides[normalizeKey(pTitle)] ||
+          overrides[pId];
+
+        return {
+          ...p,
+          ...(overrideStatus ? { status: overrideStatus } : {}),
+        };
+      });
+
+      setPages(finalPages);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching admin pages from backend:", err);
+      setError(err?.message || "Failed to load admin pages from backend.");
+      setPages([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPages();
+    setCurrentPage(1);
+  }, []);
+
+  const totalItems = pages.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = pages.slice(indexOfFirstItem, indexOfLastItem);
+
+  const getPageImageVal = (page) => {
+    if (!page) return "";
+    return page.imagePath || page.ImagePath || page.image || page.Image || page.imageUrl || page.ImageUrl || "";
+  };
+
+  const getPageBannerVal = (page) => {
+    if (!page) return "";
+    return page.bannerPath || page.BannerPath || page.banner || page.Banner || page.bannerUrl || page.BannerUrl || "";
+  };
+
+  const handleOpenEdit = (pageToEdit) => {
+    setEditingPage(pageToEdit);
+    const imgPath = getPageImageVal(pageToEdit);
+    const bnrPath = getPageBannerVal(pageToEdit);
+    setEditFormData({
+      title: pageToEdit.title || pageToEdit.Title || "",
+      slug: pageToEdit.slug || pageToEdit.Slug || "",
+      status: pageToEdit.status || pageToEdit.Status || "Active",
+      module: pageToEdit.module || pageToEdit.Module || "All",
+      metaTitle: pageToEdit.metaTitle || pageToEdit.MetaTitle || "",
+      metaKeyword: pageToEdit.metaKeyword || pageToEdit.MetaKeyword || "",
+      metaDescription: pageToEdit.metaDescription || pageToEdit.MetaDescription || "",
+      description: pageToEdit.description || pageToEdit.Description || "",
+      imageName: imgPath ? imgPath.split(/[/\\]/).pop() : "",
+      bannerName: bnrPath ? bnrPath.split(/[/\\]/).pop() : "",
+    });
+    setEditImageFile(null);
+    setEditBannerFile(null);
+    setIsEditImageRemoved(false);
+    setIsEditBannerRemoved(false);
+    setEditImagePreview(imgPath ? resolveCmsImageUrl(imgPath, "image") : "");
+    setEditBannerPreview(bnrPath ? resolveCmsImageUrl(bnrPath, "banner") : "");
+    setEditError("");
+    setActiveDropdownId(null);
+  };
+
+  const handleEditInputChange = (field) => (e) => {
+    setEditFormData((prev) => ({ ...prev, [field]: e.target.value }));
+  };
+
+  const handleEditFileChange = (field) => (e) => {
+    const file = e.target.files?.[0];
+    if (file && file.size > 4 * 1024 * 1024) {
+      setEditError("File size must be within 4MB limit.");
+      return;
+    }
+    setEditError("");
+    if (field === "image") {
+      setEditImageFile(file || null);
+      setIsEditImageRemoved(false);
+      if (file) {
+        setEditImagePreview(URL.createObjectURL(file));
+        setEditFormData((prev) => ({ ...prev, imageName: file.name }));
+      }
+    } else if (field === "banner") {
+      setEditBannerFile(file || null);
+      setIsEditBannerRemoved(false);
+      if (file) {
+        setEditBannerPreview(URL.createObjectURL(file));
+        setEditFormData((prev) => ({ ...prev, bannerName: file.name }));
+      }
+    }
+  };
+
+  const handleSaveEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingPage) return;
+
+    if (!editFormData.title.trim()) {
+      setEditError("Page title is required.");
+      return;
+    }
+
+    setEditLoading(true);
+    setEditError("");
+
+    const slug = editFormData.slug.trim() || editFormData.title.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
+    try {
+      const formData = new FormData();
+      formData.append("Title", editFormData.title.trim());
+      formData.append("Slug", slug);
+      formData.append("Status", editFormData.status);
+      formData.append("Module", editFormData.module);
+      formData.append("MetaTitle", editFormData.metaTitle || "");
+      formData.append("MetaKeyword", editFormData.metaKeyword || "");
+      formData.append("MetaDescription", editFormData.metaDescription || "");
+      formData.append("Description", editFormData.description || "");
+
+      // 1. Handle Main Image
+      if (editImageFile) {
+        formData.append("Image", editImageFile);
+        formData.append("RemoveImage", "false");
+      } else if (isEditImageRemoved) {
+        formData.append("RemoveImage", "true");
+      } else {
+        formData.append("RemoveImage", "false");
+      }
+
+      // 2. Handle Banner
+      if (editBannerFile) {
+        formData.append("Banner", editBannerFile);
+        formData.append("RemoveBanner", "false");
+      } else if (isEditBannerRemoved) {
+        formData.append("RemoveBanner", "true");
+      } else {
+        formData.append("RemoveBanner", "false");
+      }
+
+      if (editingPage.id && !String(editingPage.id).startsWith("default-")) {
+        await updateAdminPage(editingPage.id, formData);
+      } else {
+        await createAdminPage(formData);
+      }
+
+      await loadPages();
+      setEditingPage(null);
+    } catch (err) {
+      console.error("Error saving page:", err);
+      setEditError(err.response?.data?.message || err.message || "Failed to save page changes.");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleOpenDelete = (pageToDelete) => {
+    setDeletingPage(pageToDelete);
+    setActiveDropdownId(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingPage) return;
+    setDeleteLoading(true);
+    try {
+      const slugKey = deletingPage.slug || deletingPage.id;
+      if (slugKey) addStoredDeletedSlug(slugKey);
+      if (deletingPage.id) addStoredDeletedSlug(deletingPage.id);
+
+      if (deletingPage.id && !String(deletingPage.id).startsWith("default-")) {
+        await deleteAdminPage(deletingPage.id);
+      }
+
+      setPages((prev) => prev.filter((p) => p.id !== deletingPage.id && p.slug !== deletingPage.slug));
+      setDeletingPage(null);
+    } catch (err) {
+      console.error("Error deleting page:", err);
+      alert("Failed to delete page. Please try again.");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleView = (page) => {
+    setSelectedPage(page);
+    setShowFullDescription(false);
+    setActiveDropdownId(null);
+  };
+
+  const formatDateTime = (dateStr) => {
+    if (!dateStr || dateStr === '-') return "-";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+
+      const formatter = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+
+      const parts = formatter.formatToParts(d);
+      const day = parts.find((p) => p.type === 'day')?.value || '';
+      let month = parts.find((p) => p.type === 'month')?.value || '';
+      if (month.toLowerCase() === 'sep') month = 'Sept';
+      const year = parts.find((p) => p.type === 'year')?.value || '';
+      const hour = parts.find((p) => p.type === 'hour')?.value || '';
+      const minute = parts.find((p) => p.type === 'minute')?.value || '';
+      const dayPeriod = (parts.find((p) => p.type === 'dayPeriod')?.value || '').toLowerCase();
+
+      return `${day} ${month} ${year} ${hour}:${minute} ${dayPeriod}`;
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  return (
+    <div className="page-container">
+      <div className="header">
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
+          <h1 ref={(el) => { if (el) el.style.setProperty('color', '#A51C49', 'important'); }} style={{ fontSize: '1.6rem', fontWeight: 600, color: '#A51C49', margin: 0, letterSpacing: '-0.5px' }}>Page</h1>
+          <h2 ref={(el) => { if (el) el.style.setProperty('color', '#000000', 'important'); }} style={{ fontSize: '1.6rem', fontWeight: 600, color: '#000000', margin: 0 }}>Management</h2>
+        </div>
+        <button className="add-btn" onClick={() => navigate(pageCreatePath)}>
+          + Add New Page
+        </button>
+      </div>
+
+      <div className="admin-markup-table-wrap">
+        <table className="page-table">
+          <thead>
+            <tr>
+              <th>S.No</th>
+              <th>Title</th>
+              <th>Slug</th>
+              <th>Image</th>
+              <th>Module</th>
+              <th>Update Date</th>
+              <th>Entry Date</th>
+              <th>Status</th>
+              <th className="action-header">Action</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan="9" style={{ textAlign: "center", padding: "30px", color: "var(--text-secondary)" }}>
+                  Loading pages...
+                </td>
+              </tr>
+            ) : currentItems.length === 0 ? (
+              <tr>
+                <td colSpan="9" style={{ textAlign: "center", padding: "30px 20px", color: "#94a3b8", fontSize: "0.85rem" }}>Data not found</td>
+              </tr>
+            ) : (
+                currentItems.map((page, index) => (
+                  <tr key={page.id}>
+                    <td><span style={{ fontWeight: 500, color: "#000000", fontSize: "11px" }}>{indexOfFirstItem + index + 1}</span></td>
+                    <td><span style={{ fontWeight: 400, color: "#334155", fontSize: "11px" }}>{page.title}</span></td>
+                    <td><span style={{ fontWeight: 400, color: "#334155", fontSize: "11px" }}>{page.slug}</span></td>
+                    <td>
+                      {getPageImageVal(page) ? (
+                        <div
+                          style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                          onClick={() => {
+                            const src = resolveCmsImageUrl(getPageImageVal(page), "image");
+                            if (src) setActivePopupImage(src);
+                          }}
+                        >
+                          <NgrokSafeImage
+                            src={resolveCmsImageUrl(getPageImageVal(page), "image")}
+                            alt={page.title}
+                            fallbackSrc="https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&q=80&w=400"
+                            style={{
+                              width: "32px",
+                              height: "32px",
+                              borderRadius: "6px",
+                              objectFit: "cover",
+                              border: "1px solid #cbd5e1",
+                              boxShadow: "0 2px 4px rgba(0,0,0,0.06)",
+                              transition: "transform 0.2s"
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <span style={{ color: "#94a3b8", fontSize: "11px" }}>-</span>
+                      )}
+                    </td>
+                    <td><span style={{ fontWeight: 400, color: "#334155", fontSize: "11px" }}>{page.module}</span></td>
+                    <td>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", whiteSpace: "nowrap", fontWeight: 500, color: "#334155", fontSize: "11px" }}>
+                        <CalendarIcon size={15} />
+                        <span>{formatDateTime(page.updatedAtUtc || page.updateDate)}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", whiteSpace: "nowrap", fontWeight: 500, color: "#334155", fontSize: "11px" }}>
+                        <CalendarIcon size={15} />
+                        <span>{formatDateTime(page.createdAtUtc || page.entryDate)}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStatus(page)}
+                        style={{
+                          background: (page.status || "Active").toLowerCase() === "inactive" ? "#fef2f2" : "#ecfdf5",
+                          color: (page.status || "Active").toLowerCase() === "inactive" ? "#b91c1c" : "#047857",
+                          border: (page.status || "Active").toLowerCase() === "inactive" ? "1px solid #ef4444" : "1px solid #10b981",
+                          borderRadius: "6px",
+                          padding: "3px 8px",
+                          fontSize: "11px",
+                          fontWeight: "500",
+                          cursor: "pointer",
+                          transition: "all 0.2s ease"
+                        }}
+                      >
+                        {page.status || "Active"}
+                      </button>
+                    </td>
+                    <td className="action-cell">
+                      <div style={{ position: "relative", display: "inline-block", verticalAlign: "middle" }}>
+                        <button
+                          type="button"
+                          className={`actions-trigger-btn ${activeDropdownId === page.id ? "active" : ""}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveDropdownId(activeDropdownId === page.id ? null : page.id);
+                          }}
+                        >
+                          <span>Actions</span>
+                          <ChevronDown size={14} />
+                        </button>
+                        {activeDropdownId === page.id && (
+                          <div
+                            style={{
+                              position: "absolute",
+                              ...(index >= currentItems.length - 2 || currentItems.length <= 3
+                                ? { bottom: "100%", marginBottom: "6px" }
+                                : { top: "100%", marginTop: "6px" }),
+                              right: 0,
+                              background: "#ffffff",
+                              borderRadius: "10px",
+                              border: "1px solid #e2e8f0",
+                              boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+                              zIndex: 99999,
+                              minWidth: "155px",
+                              overflow: "hidden"
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleView(page);
+                                setActiveDropdownId(null);
+                              }}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                                width: "100%",
+                                padding: "10px 14px",
+                                border: "none",
+                                background: "none",
+                                cursor: "pointer",
+                                fontSize: "13px",
+                                fontWeight: 500,
+                                color: "#334155"
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
+                              onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                            >
+                              <Eye size={14} /> <span>View Page</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveDropdownId(null);
+                                navigate(pageCreatePath, { state: { page } });
+                              }}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                                width: "100%",
+                                padding: "10px 14px",
+                                border: "none",
+                                background: "none",
+                                cursor: "pointer",
+                                fontSize: "13px",
+                                fontWeight: 500,
+                                color: "#334155"
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
+                              onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                            >
+                              <Edit2 size={14} /> <span>Edit Page</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenDelete(page);
+                                setActiveDropdownId(null);
+                              }}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                                width: "100%",
+                                padding: "10px 14px",
+                                border: "none",
+                                background: "none",
+                                cursor: "pointer",
+                                fontSize: "13px",
+                                fontWeight: 500,
+                                color: "#ef4444"
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
+                              onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                            >
+                              <Trash2 size={14} /> <span>Delete Page</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+
+          {/* AdminPagination inside table card */}
+          <AdminPagination
+            currentPage={currentPage}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={(newSize) => {
+              setItemsPerPage(newSize);
+              setCurrentPage(1);
+            }}
+            itemName="pages"
+          />
+        </div>
+
+      {/* Full-size Image Preview Popup Modal */}
+      {activePopupImage && createPortal(
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(15, 23, 42, 0.8)",
+            backdropFilter: "blur(4px)",
+            zIndex: 1000000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "24px"
+          }}
+          onClick={() => setActivePopupImage(null)}
+        >
+          <div
+            style={{
+              position: "relative",
+              maxWidth: "90vw",
+              maxHeight: "90vh",
+              background: "#ffffff",
+              borderRadius: "16px",
+              padding: "16px",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setActivePopupImage(null)}
+              style={{
+                position: "absolute",
+                top: "-12px",
+                right: "-12px",
+                width: "36px",
+                height: "36px",
+                borderRadius: "50%",
+                background: "#0f172a",
+                color: "#ffffff",
+                border: "2px solid #ffffff",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)"
+              }}
+            >
+              <X size={18} />
+            </button>
+            <img
+              src={activePopupImage}
+              alt="CMS Page Asset Preview"
+              style={{
+                maxWidth: "100%",
+                maxHeight: "80vh",
+                borderRadius: "10px",
+                objectFit: "contain"
+              }}
+            />
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 1. View Details Modal Popup */}
+      {selectedPage && createPortal(
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(15, 23, 42, 0.7)",
+            backdropFilter: "blur(4px)",
+            zIndex: 999999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px"
+          }}
+          onClick={() => setSelectedPage(null)}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "720px",
+              maxHeight: "85vh",
+              overflowY: "auto",
+              background: "#ffffff",
+              borderRadius: "16px",
+              padding: "24px",
+              boxShadow: "0 20px 45px rgba(0, 0, 0, 0.18)",
+              border: "1px solid #e2e8f0"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", paddingBottom: "14px", borderBottom: "1px solid #e2e8f0" }}>
+              <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: "8px" }}>
+                <FileText size={20} color="#A51C49" />
+                <span>Page Details: <span style={{ color: "#A51C49" }}>{selectedPage.title}</span></span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setSelectedPage(null)}
+                style={{
+                  border: "none",
+                  background: "#A51C49",
+                  color: "#ffffff",
+                  borderRadius: "20px",
+                  padding: "6px 16px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontSize: "12px"
+                }}
+              >
+                Close
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", marginBottom: "20px" }}>
+              <div>
+                <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Page ID</span>
+                <div style={{ fontSize: "0.9rem", color: "#0f172a", fontWeight: 600 }}>{selectedPage.id}</div>
+              </div>
+              <div>
+                <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Slug</span>
+                <div style={{ fontSize: "0.9rem", color: "#2563eb", fontWeight: 600 }}>{selectedPage.slug}</div>
+              </div>
+              <div>
+                <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Module</span>
+                <div style={{ fontSize: "0.9rem", color: "#0f172a", fontWeight: 600 }}>{selectedPage.module || "B2C"}</div>
+              </div>
+              <div>
+                <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Status</span>
+                <div>
+                  <span style={{
+                    background: (selectedPage.status || "Active").toLowerCase() === "inactive" ? "#ffebee" : "#e8f5e9",
+                    color: (selectedPage.status || "Active").toLowerCase() === "inactive" ? "#d93025" : "#00bfa5",
+                    border: (selectedPage.status || "Active").toLowerCase() === "inactive" ? "1px solid #ffcdd2" : "1px solid #a5d6a7",
+                    borderRadius: "6px",
+                    padding: "3px 10px",
+                    fontSize: "11px",
+                    fontWeight: 600
+                  }}>
+                    {selectedPage.status || "Active"}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Entry Date</span>
+                <div style={{ fontSize: "0.85rem", color: "#334155" }}>{formatDateTime(selectedPage.createdAtUtc || selectedPage.entryDate)}</div>
+              </div>
+              <div>
+                <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Update Date</span>
+                <div style={{ fontSize: "0.85rem", color: "#334155" }}>{formatDateTime(selectedPage.updatedAtUtc || selectedPage.updateDate)}</div>
+              </div>
+            </div>
+
+            {(selectedPage.metaTitle || selectedPage.metaKeyword || selectedPage.metaDescription) && (
+              <div style={{ background: "#f8fafc", padding: "14px", borderRadius: "10px", border: "1px solid #e2e8f0", marginBottom: "20px" }}>
+                <h4 style={{ margin: "0 0 10px 0", fontSize: "0.85rem", color: "#A51C49", fontWeight: 700, textTransform: "uppercase" }}>SEO Details</h4>
+                <div style={{ display: "grid", gap: "8px", fontSize: "0.85rem" }}>
+                  {selectedPage.metaTitle && <div><strong>Meta Title:</strong> {selectedPage.metaTitle}</div>}
+                  {selectedPage.metaKeyword && <div><strong>Meta Keywords:</strong> {selectedPage.metaKeyword}</div>}
+                  {selectedPage.metaDescription && <div><strong>Meta Description:</strong> {selectedPage.metaDescription}</div>}
+                </div>
+              </div>
+            )}
+
+            {(getPageImageVal(selectedPage) || selectedPage.bannerPath || selectedPage.BannerPath) && (
+              <div style={{ display: "flex", gap: "16px", marginBottom: "20px", flexWrap: "wrap" }}>
+                {getPageImageVal(selectedPage) && (
+                  <div>
+                    <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, display: "block", marginBottom: "4px" }}>Page Image</span>
+                    <NgrokSafeImage
+                      src={resolveCmsImageUrl(getPageImageVal(selectedPage))}
+                      alt="Page Image"
+                      style={{ width: "100px", height: "80px", objectFit: "cover", borderRadius: "8px", border: "1px solid #e2e8f0", cursor: "pointer" }}
+                      onClick={() => setActivePopupImage(resolveCmsImageUrl(getPageImageVal(selectedPage)))}
+                    />
+                  </div>
+                )}
+                {(selectedPage.bannerPath || selectedPage.BannerPath) && (
+                  <div>
+                    <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, display: "block", marginBottom: "4px" }}>Banner Image</span>
+                    <NgrokSafeImage
+                      src={resolveCmsImageUrl(selectedPage.bannerPath || selectedPage.BannerPath)}
+                      alt="Banner Image"
+                      style={{ width: "140px", height: "80px", objectFit: "cover", borderRadius: "8px", border: "1px solid #e2e8f0", cursor: "pointer" }}
+                      onClick={() => setActivePopupImage(resolveCmsImageUrl(selectedPage.bannerPath || selectedPage.BannerPath))}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div>
+              <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase", display: "block", marginBottom: "6px" }}>Page Description / Content</span>
+              <div style={{
+                background: "#f8fafc",
+                padding: "16px",
+                borderRadius: "10px",
+                border: "1px solid #e2e8f0",
+                fontSize: "0.88rem",
+                color: "#1e293b",
+                lineHeight: "1.6",
+                maxHeight: "300px",
+                overflowY: "auto",
+                whiteSpace: "pre-wrap"
+              }}>
+                {selectedPage.description ? (
+                  /<[a-z][\s\S]*>/i.test(selectedPage.description) ? (
+                    <div dangerouslySetInnerHTML={{ __html: selectedPage.description }} />
+                  ) : (
+                    <div>
+                      {showFullDescription || selectedPage.description.length <= 350
+                        ? selectedPage.description
+                        : `${selectedPage.description.slice(0, 350)}...`}
+                      {selectedPage.description.length > 350 && (
+                        <div style={{ marginTop: "12px" }}>
+                          <button
+                            type="button"
+                            onClick={() => setShowFullDescription(!showFullDescription)}
+                            style={{
+                              background: "#A51C49",
+                              color: "#ffffff",
+                              border: "none",
+                              borderRadius: "6px",
+                              padding: "4px 12px",
+                              fontWeight: 600,
+                              fontSize: "0.78rem",
+                              cursor: "pointer"
+                            }}
+                          >
+                            {showFullDescription ? "View Less ▲" : "View More ▼"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                ) : (
+                  <span style={{ color: "#94a3b8" }}>No description available.</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 2. Edit Page Modal Popup with Pre-populated Data */}
+      {editingPage && createPortal(
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(15, 23, 42, 0.7)",
+            backdropFilter: "blur(4px)",
+            zIndex: 999999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px"
+          }}
+          onClick={() => setEditingPage(null)}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "750px",
+              maxHeight: "85vh",
+              overflowY: "auto",
+              background: "#ffffff",
+              borderRadius: "16px",
+              padding: "24px",
+              boxShadow: "0 20px 45px rgba(0, 0, 0, 0.18)",
+              border: "1px solid #e2e8f0"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", paddingBottom: "14px", borderBottom: "1px solid #e2e8f0" }}>
+              <h3 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: "8px" }}>
+                <Edit2 size={20} color="#A51C49" />
+                <span>Edit Page: <span style={{ color: "#A51C49" }}>{editingPage.title}</span></span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingPage(null)}
+                style={{ border: "none", background: "#f1f5f9", color: "#475569", borderRadius: "50%", width: "32px", height: "32px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {editError && (
+              <div style={{ background: "#fef2f2", color: "#b91c1c", padding: "10px 14px", borderRadius: "8px", fontSize: "0.85rem", marginBottom: "16px", border: "1px solid #fecaca" }}>
+                {editError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveEditSubmit}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", marginBottom: "20px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155" }}>Page Title *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormData.title}
+                    onChange={handleEditInputChange("title")}
+                    style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.9rem", outline: "none" }}
+                  />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155" }}>Slug</label>
+                  <input
+                    type="text"
+                    value={editFormData.slug}
+                    onChange={handleEditInputChange("slug")}
+                    style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.9rem", outline: "none" }}
+                  />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155" }}>Module</label>
+                  <select
+                    value={editFormData.module}
+                    onChange={handleEditInputChange("module")}
+                    style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.9rem", outline: "none", background: "#ffffff" }}
+                  >
+                    <option value="B2C">B2C</option>
+                    <option value="B2B">B2B</option>
+                    <option value="All">All</option>
+                  </select>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155" }}>Status</label>
+                  <select
+                    value={editFormData.status}
+                    onChange={handleEditInputChange("status")}
+                    style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.9rem", outline: "none", background: "#ffffff" }}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "16px", marginBottom: "20px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155" }}>Page Image [max 1MB]</label>
+                  <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                    {editImagePreview && (
+                      <NgrokSafeImage src={editImagePreview} alt="Page Image Preview" style={{ width: "60px", height: "60px", objectFit: "cover", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+                    )}
+                    <div>
+                      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                        <label style={{ padding: "6px 12px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: "6px", cursor: "pointer", fontSize: "0.82rem", fontWeight: 600, color: "#334155" }}>
+                          Choose File
+                          <input type="file" accept="image/*" onChange={handleEditFileChange("image")} style={{ display: "none" }} />
+                        </label>
+                        {(editImagePreview || editFormData.imageName) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditImageFile(null);
+                              setIsEditImageRemoved(true);
+                              setEditImagePreview("");
+                              setEditFormData((prev) => ({ ...prev, imageName: "" }));
+                            }}
+                            style={{
+                              padding: "6px 10px",
+                              background: "#fee2e2",
+                              color: "#991b1b",
+                              border: "1px solid #fca5a5",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "0.78rem",
+                              fontWeight: 600
+                            }}
+                          >
+                            Remove Image
+                          </button>
+                        )}
+                      </div>
+                      <span style={{ display: "block", fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}>
+                        {editFormData.imageName || "No file chosen"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155" }}>Banner Image [max 4MB]</label>
+                  <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                    {editBannerPreview && (
+                      <NgrokSafeImage src={editBannerPreview} alt="Banner Image Preview" style={{ width: "90px", height: "60px", objectFit: "cover", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+                    )}
+                    <div>
+                      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                        <label style={{ padding: "6px 12px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: "6px", cursor: "pointer", fontSize: "0.82rem", fontWeight: 600, color: "#334155" }}>
+                          Choose File
+                          <input type="file" accept="image/*" onChange={handleEditFileChange("banner")} style={{ display: "none" }} />
+                        </label>
+                        {(editBannerPreview || editFormData.bannerName) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditBannerFile(null);
+                              setIsEditBannerRemoved(true);
+                              setEditBannerPreview("");
+                              setEditFormData((prev) => ({ ...prev, bannerName: "" }));
+                            }}
+                            style={{
+                              padding: "6px 10px",
+                              background: "#fee2e2",
+                              color: "#991b1b",
+                              border: "1px solid #fca5a5",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontSize: "0.78rem",
+                              fontWeight: 600
+                            }}
+                          >
+                            Remove Banner
+                          </button>
+                        )}
+                      </div>
+                      <span style={{ display: "block", fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}>
+                        {editFormData.bannerName || "No file chosen"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ background: "#A51C49", color: "#ffffff", padding: "8px 14px", fontWeight: 700, borderRadius: "6px", fontSize: "0.85rem", marginBottom: "14px" }}>
+                SEO Details
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px", marginBottom: "20px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#334155" }}>Meta Title</label>
+                  <input
+                    type="text"
+                    value={editFormData.metaTitle}
+                    onChange={handleEditInputChange("metaTitle")}
+                    style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.88rem", outline: "none" }}
+                  />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#334155" }}>Meta Keywords</label>
+                  <input
+                    type="text"
+                    value={editFormData.metaKeyword}
+                    onChange={handleEditInputChange("metaKeyword")}
+                    style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.88rem", outline: "none" }}
+                  />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px", gridColumn: "1 / -1" }}>
+                  <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#334155" }}>Meta Description</label>
+                  <textarea
+                    rows="2"
+                    value={editFormData.metaDescription}
+                    onChange={handleEditInputChange("metaDescription")}
+                    onInput={(e) => {
+                      e.target.style.height = "auto";
+                      e.target.style.height = `${Math.max(e.target.scrollHeight, 60)}px`;
+                    }}
+                    style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.88rem", outline: "none", resize: "none", minHeight: "60px", overflowY: "hidden" }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ background: "#A51C49", color: "#ffffff", padding: "8px 14px", fontWeight: 700, borderRadius: "6px", fontSize: "0.85rem", marginBottom: "14px" }}>
+                Description / Page Content
+              </div>
+
+              <div style={{ marginBottom: "20px" }}>
+                <textarea
+                  rows="6"
+                  value={editFormData.description}
+                  onChange={handleEditInputChange("description")}
+                  onInput={(e) => {
+                    e.target.style.height = "auto";
+                    e.target.style.height = `${Math.max(e.target.scrollHeight, 120)}px`;
+                  }}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.9rem", outline: "none", resize: "none", minHeight: "120px", overflowY: "hidden" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingPage(null)}
+                  style={{ padding: "8px 18px", background: "#f1f5f9", color: "#475569", border: "1px solid #cbd5e1", borderRadius: "6px", fontWeight: 600, cursor: "pointer", fontSize: "0.85rem" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editLoading}
+                  style={{ padding: "8px 20px", background: "#A51C49", color: "#ffffff", border: "none", borderRadius: "6px", fontWeight: 600, cursor: "pointer", fontSize: "0.85rem", opacity: editLoading ? 0.7 : 1 }}
+                >
+                  {editLoading ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 3. Delete Confirmation Modal Popup */}
+      {deletingPage && createPortal(
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(15, 23, 42, 0.7)",
+            backdropFilter: "blur(4px)",
+            zIndex: 999999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px"
+          }}
+          onClick={() => setDeletingPage(null)}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "460px",
+              background: "#ffffff",
+              borderRadius: "16px",
+              padding: "24px",
+              boxShadow: "0 20px 45px rgba(0, 0, 0, 0.18)",
+              border: "1px solid #e2e8f0",
+              textAlign: "center"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ width: "52px", height: "52px", borderRadius: "50%", background: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+              <AlertTriangle size={28} color="#ef4444" />
+            </div>
+
+            <h3 style={{ margin: "0 0 8px 0", fontSize: "1.2rem", fontWeight: 700, color: "#0f172a" }}>
+              Delete Page Confirmation
+            </h3>
+
+            <p style={{ margin: "0 0 16px 0", fontSize: "0.88rem", color: "#64748b" }}>
+              Are you sure you want to delete this page? This action cannot be undone.
+            </p>
+
+            <div style={{ background: "#f8fafc", padding: "12px 16px", borderRadius: "10px", border: "1px solid #e2e8f0", marginBottom: "24px", textAlign: "left", fontSize: "0.85rem" }}>
+              <div style={{ marginBottom: "4px" }}><strong>Page ID:</strong> <span style={{ color: "#2563eb" }}>{deletingPage.id}</span></div>
+              <div style={{ marginBottom: "4px" }}><strong>Title:</strong> {deletingPage.title}</div>
+              <div><strong>Slug:</strong> {deletingPage.slug}</div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
+              <button
+                type="button"
+                onClick={() => setDeletingPage(null)}
+                disabled={deleteLoading}
+                style={{ padding: "8px 18px", background: "#ffffff", border: "1px solid #cbd5e1", color: "#475569", borderRadius: "6px", fontWeight: 600, cursor: "pointer", fontSize: "0.85rem" }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deleteLoading}
+                style={{ padding: "8px 20px", background: "#ef4444", color: "#ffffff", border: "none", borderRadius: "6px", fontWeight: 600, cursor: "pointer", fontSize: "0.85rem", opacity: deleteLoading ? 0.7 : 1 }}
+              >
+                {deleteLoading ? "Deleting..." : "Yes, Delete Page"}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+    </div>
+  );
+};
+
+export default AllPages;

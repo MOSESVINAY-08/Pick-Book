@@ -1,0 +1,711 @@
+.admin-cancel-page {
+  gap: 12px;
+  padding-top: 10px !important;
+}
+
+.admin-cancel-page .admin-action-btn {
+  background-color: #ffffff !important;
+  border: 1.5px solid #A51C49 !important;
+  color: #A51C49 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  transition: all 0.2s ease-in-out !important;
+  border-radius: 12px !important;
+  padding: 5px 14px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+}
+
+.admin-cancel-page .admin-action-btn:hover {
+  background-color: #A51C49 !important;
+  border: 1.5px solid #A51C49 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(165, 28, 73, 0.25) !important;
+  transform: translateY(-1px) !important;
+}
+
+.admin-heading-red {
+  color: #A51C49 !important;
+}
+
+.admin-cancel-header {
+  margin-top: 5px !important;
+  margin-bottom: 7px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.admin-cancel-header h1 {
+  font-size: 1.6rem !important;
+  font-weight: 600 !important;
+  color: #A51C49 !important;
+  margin: 0 !important;
+  letter-spacing: -0.5px !important;
+  line-height: 1.2 !important;
+}
+
+.admin-cancel-header h2 {
+  font-size: 1.6rem !important;
+  font-weight: 600 !important;
+  color: #000000 !important;
+  margin: 0 !important;
+  line-height: 1.2 !important;
+}
+
+.admin-cancel-chip {
+  background: var(--admin-soft);
+  border-color: var(--admin-border);
+  color: var(--admin-primary);
+}
+
+.admin-cancel-clear-btn {
+  background: var(--admin-soft) !important;
+  border: 1px solid var(--admin-border) !important;
+  color: var(--admin-text) !important;
+}
+
+.admin-cancel-filters {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: flex-end !important;
+  gap: 6px 12px !important;
+  padding: 8px 12px !important;
+  margin-top: 2px !important;
+  margin-bottom: 6px !important;
+}
+
+.admin-cancel-filters label {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  flex: 1 1 150px !important;
+  min-width: 140px !important;
+  max-width: 220px !important;
+}
+
+.admin-cancel-filters label span {
+  font-size: 0.64rem !important;
+  font-weight: 700 !important;
+  color: #334155 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.03em !important;
+  white-space: nowrap !important;
+}
+
+.admin-cancel-filters input,
+.admin-cancel-filters select {
+  height: 28px !important;
+  padding: 2px 8px !important;
+  font-size: 0.76rem !important;
+  border: 1px solid rgba(29, 78, 216, 0.22) !important;
+  border-radius: 6px !important;
+  background: #ffffff !important;
+  color: #1e293b !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.admin-cancel-filters input::placeholder {
+  font-size: 0.72rem !important;
+  color: #94a3b8 !important;
+}
+
+.admin-cancel-filter-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin-top: auto !important;
+  margin-left: auto !important;
+}
+
+.admin-cancel-filter-actions button.primary {
+  height: 28px !important;
+  padding: 0 14px !important;
+  font-size: 0.76rem !important;
+  font-weight: 600 !important;
+  border: none !important;
+  border-radius: 6px !important;
+  background: #1d4ed8 !important;
+  color: #ffffff !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 4px rgba(29, 78, 216, 0.2) !important;
+}
+
+.admin-cancel-filter-actions button.primary:hover {
+  background: #1e40af !important;
+  box-shadow: 0 3px 8px rgba(29, 78, 216, 0.35) !important;
+}
+
+.admin-cancel-filter-actions button.secondary {
+  height: 28px !important;
+  padding: 0 14px !important;
+  font-size: 0.76rem !important;
+  font-weight: 600 !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 6px !important;
+  background: #e2e8f0 !important;
+  color: #334155 !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  transition: all 0.2s ease !important;
+}
+
+.admin-cancel-filter-actions button.secondary:hover {
+  background: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.admin-cancel-table-shell {
+  border: 1px solid var(--admin-border);
+  border-radius: 13px;
+  overflow: hidden;
+  background: var(--admin-surface);
+  box-shadow: 0 10px 20px rgba(16, 34, 58, 0.08);
+}
+
+/* Hotel Booking List table heading style applied to cancellation table heading */
+.admin-cancel-table-head {
+  display: grid;
+  gap: 8px !important;
+  padding: 8px !important;
+  min-height: 34px !important;
+  height: auto !important;
+  align-items: center !important;
+  background: linear-gradient(135deg, #A51C49, #851237) !important;
+  border-top-left-radius: 8px !important;
+  border-top-right-radius: 8px !important;
+  box-sizing: border-box !important;
+}
+
+.admin-cancel-table-head>span {
+  min-height: 24px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #ffffff !important;
+  font-size: 0.74rem !important;
+  font-weight: 500 !important;
+  text-align: center !important;
+  padding: 2px 2px !important;
+  white-space: nowrap !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.25) !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+}
+
+.admin-cancel-table-head>span:last-child {
+  border-right: none !important;
+}
+
+.admin-cancel-table-body {
+  display: grid;
+}
+
+.admin-cancel-table-row {
+  display: grid;
+  gap: 8px !important;
+  padding: 8px !important;
+  border-top: 1px solid var(--admin-border);
+  align-items: stretch;
+  transition: all 0.2s ease-in-out;
+  box-sizing: border-box !important;
+}
+
+.admin-cancel-table-row:hover {
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+  transform: translateY(-1px);
+}
+
+.admin-cancel-table-row:hover .admin-cancel-cell {
+  background: #f8fafc !important;
+  border-color: rgba(165, 28, 73, 0.25) !important;
+}
+
+/* Center all data vertically and horizontally inside card cells */
+.admin-cancel-cell {
+  min-height: 50px;
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 4px 8px;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  text-align: center !important;
+  gap: 2px;
+  color: var(--admin-text);
+  font-size: 0.74rem;
+  overflow: hidden;
+  transition: all 0.2s ease-in-out;
+}
+
+.admin-cancel-cell strong {
+  color: var(--admin-text);
+  font-size: 0.76rem;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: block;
+  font-weight: 500;
+}
+
+.admin-cancel-cell small {
+  color: var(--admin-muted);
+  font-size: 0.65rem;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: block;
+}
+
+.admin-cancel-empty {
+  min-height: 160px;
+  display: grid;
+  place-items: center;
+  color: var(--admin-muted);
+  font-size: 1.05rem;
+  background: var(--admin-surface);
+}
+
+.admin-cancel-footnote {
+  min-height: 32px;
+  border-top: 1px solid var(--admin-border);
+  background: var(--admin-soft);
+  color: var(--admin-text);
+  font-size: 0.84rem;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 1100px) {
+  .admin-cancel-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+
+  .admin-cancel-table-head,
+  .admin-cancel-table-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-cancel-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Toolbar equal line alignment and custom button colors */
+.admin-cancel-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-cancel-toolbar .admin-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-cancel-toolbar .admin-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Filter button */
+.admin-cancel-toolbar .admin-actions-row button:first-of-type {
+  background: #A41B48 !important;
+  color: #ffffff !important;
+  border: 1.5px solid #A41B48 !important;
+  border-radius: 20px !important;
+  padding: 6px 16px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.admin-cancel-toolbar .admin-actions-row button:first-of-type:hover {
+  background: #851237 !important;
+  border-color: #851237 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(165, 28, 73, 0.3) !important;
+}
+
+/* Clear Filter button */
+.admin-cancel-toolbar .admin-cancel-clear-btn {
+  background: #ffffff !important;
+  color: var(--admin-muted) !important;
+  border: 1.5px solid var(--admin-border) !important;
+  border-radius: 20px !important;
+  padding: 6px 16px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+}
+
+.admin-cancel-toolbar .admin-cancel-clear-btn:hover {
+  background: var(--admin-soft) !important;
+  border-color: var(--admin-muted) !important;
+  color: var(--admin-text) !important;
+}
+
+/* Export button */
+.admin-cancel-toolbar .admin-actions-row button:last-of-type {
+  background: #137333 !important;
+  color: #ffffff !important;
+  border: 1.5px solid #137333 !important;
+  border-radius: 20px !important;
+  padding: 6px 16px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.admin-cancel-toolbar .admin-actions-row button:last-of-type:hover {
+  background: #0f5d29 !important;
+  border-color: #0f5d29 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(19, 115, 51, 0.3) !important;
+}
+
+/* Modal Detail Pop-up Overlay */
+.admin-cancel-page .admin-view-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(15, 23, 42, 0.5) !important;
+  backdrop-filter: blur(4px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 2000 !important;
+  padding: 16px !important;
+  box-sizing: border-box !important;
+}
+
+.admin-cancel-page .admin-view-card {
+  background: var(--admin-surface) !important;
+  border-radius: 18px !important;
+  width: min(900px, 95vw) !important;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.16) !important;
+  border: 1px solid var(--admin-border) !important;
+  padding: 24px !important;
+  box-sizing: border-box !important;
+  animation: modalScaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+@keyframes modalScaleUp {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.admin-cancel-page .admin-view-header {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  padding-bottom: 16px !important;
+  border-bottom: 1.5px solid var(--admin-border) !important;
+}
+
+.admin-cancel-page .admin-view-header button {
+  border: 1.5px solid var(--admin-border) !important;
+  background: var(--admin-soft) !important;
+  color: var(--admin-primary) !important;
+  border-radius: 10px !important;
+  padding: 6px 14px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.admin-cancel-page .admin-view-header button:hover {
+  background: var(--admin-primary) !important;
+  color: #ffffff !important;
+  border-color: var(--admin-primary) !important;
+}
+
+.admin-cancel-page .admin-view-header-subtitle {
+  margin: 6px 0 0 !important;
+  color: var(--admin-muted) !important;
+  font-size: 0.85rem !important;
+}
+
+.admin-cancel-page .admin-view-meta-row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin-top: 10px !important;
+}
+
+.admin-cancel-page .admin-view-meta-chip {
+  padding: 6px 14px !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--admin-border) !important;
+  background: var(--admin-soft) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  color: var(--admin-primary) !important;
+}
+
+.admin-cancel-page .admin-view-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+  gap: 16px !important;
+  padding-top: 20px !important;
+}
+
+.admin-cancel-page .admin-view-grid span {
+  display: block !important;
+  font-size: 0.72rem !important;
+  color: var(--admin-muted) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  margin-bottom: 6px !important;
+  font-weight: 700 !important;
+}
+
+.admin-cancel-page .admin-view-grid strong {
+  font-size: 0.95rem !important;
+  color: var(--admin-text) !important;
+  font-weight: 700 !important;
+}
+
+.admin-cancel-page .admin-view-highlight-card {
+  border-radius: 14px !important;
+  border: 1.5px solid var(--admin-border) !important;
+  padding: 12px 16px !important;
+  background: var(--admin-soft) !important;
+  display: grid !important;
+}
+
+/* Action button view */
+.admin-cancel-view-btn {
+  background-color: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #475569 !important;
+  padding: 4px 12px !important;
+  font-size: 0.72rem !important;
+  font-weight: 500 !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease-in-out !important;
+  outline: none !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-cancel-view-btn:hover {
+  background-color: #cbd5e1 !important;
+  border-color: #94a3b8 !important;
+  color: #1e293b !important;
+  transform: translateY(-1px) !important;
+}
+
+/* View button completed state (blue) */
+.admin-cancel-view-btn.completed-state {
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
+.admin-cancel-view-btn.completed-state:hover {
+  background-color: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
+}
+
+/* Light colored Modal Close Button */
+.admin-cancel-page .admin-view-close-btn,
+.admin-cancel-page .admin-view-header button.admin-view-close-btn,
+.admin-view-header button.admin-view-close-btn {
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 50% !important;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  padding: 0 !important;
+  font-size: 1.1rem !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.admin-cancel-page .admin-view-close-btn:hover,
+.admin-cancel-page .admin-view-header button.admin-view-close-btn:hover,
+.admin-view-header button.admin-view-close-btn:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
+  transform: scale(1.06) !important;
+}
+
+/* === Modal View Sections & Tables === */
+.admin-cancel-page .admin-view-section,
+.admin-view-section {
+  margin-top: 16px;
+}
+
+.admin-cancel-page .admin-view-section-title,
+.admin-view-section-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #A51C49;
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-cancel-page .admin-view-section-title::before,
+.admin-view-section-title::before {
+  content: '';
+  width: 3px;
+  height: 14px;
+  background: linear-gradient(180deg, #A51C49, #e91e63);
+  border-radius: 4px;
+}
+
+.admin-cancel-page .admin-view-table,
+.admin-view-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  background: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 14px;
+}
+
+.admin-cancel-page .admin-view-table th,
+.admin-cancel-page .admin-view-table td,
+.admin-view-table th,
+.admin-view-table td {
+  padding: 6px 12px;
+  border: 1px solid #e2e8f0;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.admin-cancel-page .admin-view-table th,
+.admin-view-table th {
+  background: #A51C49 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 0.76rem !important;
+  width: 22%;
+}
+
+.admin-cancel-page .admin-view-table td,
+.admin-view-table td {
+  color: #1e293b;
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
+.admin-cancel-page .admin-view-highlight-row,
+.admin-view-highlight-row {
+  background: #f8fafc;
+  font-weight: 700;
+}
+
+/* === Cancellation Status Pills (One Status One Color) === */
+.admin-status-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 3px 10px !important;
+  border-radius: 9999px !important;
+  font-size: 0.70rem !important;
+  font-weight: 700 !important;
+  text-transform: capitalize !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0.02em !important;
+  transition: all 0.2s ease-in-out !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* 1. PENDING: Soft Amber / Gold */
+.admin-status-pill.pending {
+  background-color: #fef3c7 !important;
+  color: #b45309 !important;
+  border: 1px solid #f59e0b !important;
+}
+.admin-status-pill.pending:hover {
+  background-color: #b45309 !important;
+  color: #ffffff !important;
+}
+
+/* 2. REFUNDED: Soft Emerald / Green */
+.admin-status-pill.refunded,
+.admin-status-pill.status-approved {
+  background-color: #dcfce7 !important;
+  color: #15803d !important;
+  border: 1px solid #22c55e !important;
+}
+.admin-status-pill.refunded:hover,
+.admin-status-pill.status-approved:hover {
+  background-color: #15803d !important;
+  color: #ffffff !important;
+}
+
+/* 3. COMPLETED: Soft Royal / Sky Blue */
+.admin-status-pill.completed {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border: 1px solid #3b82f6 !important;
+}
+.admin-status-pill.completed:hover {
+  background-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+
+/* 4. CANCELLED / REJECTED / FAILED: Soft Crimson Red */
+.admin-status-pill.cancelled,
+.admin-status-pill.rejected,
+.admin-status-pill.failed,
+.admin-status-pill.status-rejected {
+  background-color: #fee2e2 !important;
+  color: #b91c1c !important;
+  border: 1px solid #ef4444 !important;
+}
+.admin-status-pill.cancelled:hover,
+.admin-status-pill.rejected:hover,
+.admin-status-pill.failed:hover,
+.admin-status-pill.status-rejected:hover {
+  background-color: #b91c1c !important;
+  color: #ffffff !important;
+}

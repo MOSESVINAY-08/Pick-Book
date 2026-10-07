@@ -1,0 +1,671 @@
+.flight-ops-page {
+  --ops-border: #cfdbea;
+  --ops-text: #1c395f;
+  --ops-muted: #597293;
+  --ops-primary: #17242d;
+  --ops-primary-strong: #17242d;
+  --ops-accent: #ff0000;
+  --ops-accent-strong: #144f9c;
+  --ops-danger: #ff0000;
+  --ops-success: #ff0000;
+  --ops-shadow: 0 12px 26px rgba(13, 30, 52, 0.1);
+  --ops-heading-font: var(--app-font-family);
+  --ops-body-font: var(--app-font-family);
+
+  font-family: var(--app-font-family) !important;
+  color: var(--ops-text);
+  max-width: 1260px;
+  margin: 0 auto;
+}
+
+/* Final Atlas theme override for flight and bus booking lists */
+.flight-ops-page {
+  --ops-border: var(--theme-border, #E5E7EB);
+  --ops-text: var(--theme-navy, #1f2a44);
+  --ops-muted: var(--theme-muted, #64748b);
+  --ops-primary: var(--theme-primary, #ff0000);
+  --ops-primary-strong: var(--theme-primary-strong, #ff0000);
+  --ops-accent: var(--theme-primary, #ff0000);
+  --ops-accent-strong: var(--theme-primary-strong, #ff0000);
+  --ops-danger: var(--theme-primary-strong, #ff0000);
+  --ops-success: var(--theme-primary, #ff0000);
+  --ops-shadow: var(--theme-shadow-sm, 0 10px 24px rgba(125, 59, 31, 0.08));
+}
+
+.flight-ops-header,
+.flight-ops-filters,
+.flight-ops-table-wrap,
+.ops-modal,
+.ops-modal-grid div {
+  border-color: var(--theme-border, #E5E7EB) !important;
+  background: var(--theme-surface, #ffffff) !important;
+  box-shadow: var(--theme-shadow-sm, 0 10px 24px rgba(125, 59, 31, 0.08)) !important;
+}
+
+.flight-ops-header h1,
+.ops-table td strong,
+.ops-modal-grid strong {
+  color: var(--theme-navy, #1f2a44) !important;
+}
+
+.flight-ops-filters span,
+.ops-modal-grid span {
+  color: #7c3f2b !important;
+}
+
+.ops-icon-btn,
+.filters-actions .primary,
+.table-actions button,
+.ops-btn-action,
+.ops-action-btn {
+  border-color: transparent !important;
+  background: #ff0000 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(255, 0, 0, 0.2) !important;
+}
+
+.filters-actions .secondary {
+  border-color: var(--theme-border, #E5E7EB) !important;
+  background: var(--theme-primary-soft, #fef2f2) !important;
+  color: var(--theme-primary-strong, #ff0000) !important;
+}
+
+.ops-table thead {
+  background: #ff0000 !important;
+}
+
+.ops-table th {
+  color: #ffffff !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  padding: 14px 16px !important;
+  white-space: nowrap !important;
+}
+
+.status-badge.success {
+  border-color: #a7f3d0 !important;
+  background: #ecfdf5 !important;
+  color: #059669 !important;
+}
+
+.status-badge.danger {
+  border-color: #fecaca !important;
+  background: #fef2f2 !important;
+  color: #ff0000 !important;
+}
+
+.status-badge.default {
+  border-color: #e2e8f0 !important;
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+}
+
+.flight-ops-filters input:focus,
+.flight-ops-filters select:focus {
+  border-color: #ffb29c !important;
+  box-shadow: 0 0 0 4px rgba(255, 0, 0, 0.12) !important;
+}
+
+.flight-ops-page *,
+.flight-ops-page *::before,
+.flight-ops-page *::after {
+  box-sizing: border-box;
+}
+
+.flight-ops-header {
+  border: 1px solid var(--ops-border);
+  border-radius: 16px;
+  background:
+    radial-gradient(
+      circle at 94% 10%,
+      rgba(37, 109, 204, 0.12),
+      transparent 34%
+    ),
+    radial-gradient(circle at 4% 90%, rgba(34, 87, 157, 0.1), transparent 32%),
+    #ffffff;
+  box-shadow: var(--ops-shadow);
+  padding: 18px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.flight-ops-header h1 {
+  margin: 0;
+  font-family: var(--app-font-family) !important;
+  color: #1e3c64;
+  font-size: clamp(1.26rem, 2.16vw, 1.71rem);
+  letter-spacing: -0.02em;
+}
+
+.flight-ops-header p {
+  margin: 8px 0 0;
+  color: var(--ops-muted);
+  font-size: 0.828rem;
+}
+
+.flight-ops-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ops-icon-btn {
+  border: 1px solid #c6d6eb;
+  border-radius: 10px;
+  min-height: 36px;
+  padding: 0 12px;
+  background: #f6f9fe;
+  color: #264a7a;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.ops-feedback {
+  margin-top: 10px;
+  border-radius: 10px;
+  min-height: 40px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.747rem;
+  font-weight: 700;
+}
+
+.ops-feedback.error {
+  border: 1px solid #dfebfb;
+  background: #f6f9fe;
+  color: #144f9c;
+}
+
+.ops-feedback.success {
+  border: 1px solid #e4eefc;
+  background: #f6f9fe;
+  color: #ff0000;
+}
+
+.flight-ops-filters {
+  margin-top: 12px;
+  border: 1px solid var(--ops-border);
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: var(--ops-shadow);
+  padding: 14px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.flight-ops-filters label {
+  display: grid;
+  gap: 6px;
+}
+
+.flight-ops-filters span {
+  color: #506682;
+  font-size: 0.657rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.flight-ops-filters input,
+.flight-ops-filters select {
+  min-height: 38px;
+  border-radius: 9px;
+  border: 1px solid #c9d6e8;
+  background: #ffffff;
+  color: #1d385c;
+  padding: 0 10px;
+}
+
+.filters-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filters-actions button {
+  border-radius: 9px;
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 0.702rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.filters-actions .primary {
+  border: 0;
+  background: linear-gradient(
+    135deg,
+    var(--ops-accent),
+    var(--ops-accent-strong)
+  );
+  color: #ffffff;
+}
+
+.filters-actions .secondary {
+  border: 1px solid #c6d6eb;
+  background: #f6f9fe;
+  color: #264a7a;
+}
+
+.flight-ops-table-wrap {
+  margin-top: 12px;
+  border: 1px solid var(--ops-border);
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: var(--ops-shadow);
+  overflow: hidden;
+}
+
+.ops-table-scroll {
+  overflow-x: auto;
+  scrollbar-width: auto !important;
+  -ms-overflow-style: auto !important;
+}
+
+.ops-table-scroll::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+  display: block !important;
+}
+
+.ops-table-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--theme-primary, #ff0000) !important;
+  border-radius: 3px !important;
+}
+
+.ops-table-scroll::-webkit-scrollbar-track {
+  background: var(--theme-primary-soft, #fef2f2) !important;
+  border-radius: 3px !important;
+}
+
+.ops-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+.ops-table thead {
+  background: #ff0000 !important;
+}
+
+.ops-table th {
+  text-align: left;
+  padding: 14px 16px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #ffffff !important;
+  border: none;
+}
+
+.ops-table td {
+  padding: 14px 16px;
+  border-top: 1px solid #f1f5f9;
+  border-bottom: none;
+  vertical-align: middle;
+  font-size: 0.82rem;
+  color: #334155;
+  line-height: 1.4;
+}
+
+.ops-table tr:hover td {
+  background: #fafbfc;
+}
+
+.ops-table td strong {
+  display: block;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 0.84rem;
+}
+
+.ops-table td small {
+  display: block;
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 4px 14px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-badge.success,
+.status-badge.status-completed,
+.status-badge.status-confirmed,
+.status-badge.status-booked {
+  color: #059669 !important;
+  background: #ecfdf5 !important;
+  border: 1px solid #a7f3d0 !important;
+}
+
+.status-badge.danger,
+.status-badge.status-cancelled {
+  color: #ff0000 !important;
+  background: #fef2f2 !important;
+  border: 1px solid #fecaca !important;
+}
+
+.status-badge.default {
+  color: #334155 !important;
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.table-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+
+.table-actions button,
+.ops-btn-action,
+.ops-action-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: none;
+  background: #ff0000 !important;
+  color: #ffffff !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(255, 0, 0, 0.25) !important;
+  transition: all 0.15s ease;
+}
+
+.table-actions button:hover,
+.ops-btn-action:hover,
+.ops-action-btn:hover {
+  background: #ff0000 !important;
+  transform: translateY(-1px);
+}
+
+.ops-btn-action-view {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  color: #64748b !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease;
+}
+
+.ops-btn-action-view:hover {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  transform: translateY(-1px);
+}
+
+.table-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ops-empty {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  color: #4f688a;
+  font-size: 0.81rem;
+}
+
+.ops-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 22, 36, 0.58);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1600;
+  padding: 16px 14px;
+  overflow-y: auto;
+  scrollbar-width: auto !important;
+  -ms-overflow-style: auto !important;
+}
+
+.ops-modal-backdrop::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+  display: block !important;
+}
+
+.ops-modal-backdrop::-webkit-scrollbar-thumb {
+  background-color: var(--theme-primary, #ff0000) !important;
+  border-radius: 3px !important;
+}
+
+.ops-modal-backdrop::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.ops-modal {
+  width: min(780px, 100%);
+  max-height: calc(100vh - 32px);
+  border: 1px solid #c8d7eb;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 28px 48px rgba(13, 27, 45, 0.35);
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-bottom: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #ff0000 #fef2f2;
+}
+
+.ops-modal::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ops-modal::-webkit-scrollbar-track {
+  background: #fef2f2;
+  border-radius: 0 14px 14px 0;
+}
+
+.ops-modal::-webkit-scrollbar-thumb {
+  background: #ff0000;
+  border-radius: 999px;
+  border: 2px solid #fef2f2;
+}
+
+.ops-modal header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  border-bottom: 1px solid #d3dfef;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ops-modal header h3 {
+  margin: 0;
+  color: #1d3b63;
+  font-size: 0.945rem;
+}
+
+.ops-modal header button {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid #c6d5e9;
+  background: #f6f9fe;
+  color: #254979;
+  cursor: pointer;
+}
+
+.ops-modal-grid {
+  padding: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ops-modal-grid div {
+  border: 1px solid #d2deee;
+  border-radius: 10px;
+  background: #f6f9fe;
+  min-height: 62px;
+  padding: 8px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+}
+
+.ops-modal-grid span {
+  color: #5e7696;
+  font-size: 0.648rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ops-modal-grid strong {
+  color: #17242d;
+  font-size: 0.765rem;
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1120px) {
+  .flight-ops-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .flight-ops-header {
+    flex-direction: column;
+  }
+
+  .flight-ops-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .ops-modal-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Final Atlas theme override for flight and bus booking lists */
+.flight-ops-page {
+  --ops-border: var(--theme-border, #E5E7EB);
+  --ops-text: var(--theme-navy, #1f2a44);
+  --ops-muted: var(--theme-muted, #64748b);
+  --ops-primary: var(--theme-primary, #ff0000);
+  --ops-primary-strong: var(--theme-primary-strong, #ff0000);
+  --ops-accent: var(--theme-primary, #ff0000);
+  --ops-accent-strong: var(--theme-primary-strong, #ff0000);
+  --ops-danger: var(--theme-primary-strong, #ff0000);
+  --ops-success: var(--theme-primary, #ff0000);
+  --ops-shadow: var(--theme-shadow-sm, 0 10px 24px rgba(125, 59, 31, 0.08));
+}
+
+.flight-ops-header,
+.flight-ops-filters,
+.flight-ops-table-wrap,
+.ops-modal,
+.ops-modal-grid div {
+  border-color: var(--theme-border, #E5E7EB) !important;
+  background: var(--theme-surface, #ffffff) !important;
+  box-shadow: var(--theme-shadow-sm, 0 10px 24px rgba(125, 59, 31, 0.08)) !important;
+}
+
+.flight-ops-header h1,
+.ops-table td strong,
+.ops-modal-grid strong {
+  color: var(--theme-navy, #1f2a44) !important;
+}
+
+.flight-ops-filters span,
+.ops-modal-grid span {
+  color: #7c3f2b !important;
+}
+
+.ops-icon-btn,
+.filters-actions .primary,
+.table-actions button {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, var(--theme-primary, #ff0000), var(--theme-primary-strong, #ff0000)) !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 28px rgba(255, 0, 0, 0.18) !important;
+}
+
+.filters-actions .secondary {
+  border-color: var(--theme-border, #E5E7EB) !important;
+  background: var(--theme-primary-soft, #fef2f2) !important;
+  color: var(--theme-primary-strong, #ff0000) !important;
+}
+
+.ops-table thead {
+  background: #ff0000 !important;
+}
+
+.ops-table th {
+  color: #ffffff !important;
+  background: #ff0000 !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  padding: 14px 16px !important;
+  white-space: nowrap !important;
+  border: none !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.status-badge.success,
+.status-badge.default {
+  border-color: #ffd0bf !important;
+  background: #fff4ed !important;
+  color: var(--theme-primary-strong, #ff0000) !important;
+}
+
+.flight-ops-filters input:focus,
+.flight-ops-filters select:focus {
+  border-color: #ffb29c !important;
+  box-shadow: 0 0 0 4px rgba(255, 0, 0, 0.12) !important;
+}

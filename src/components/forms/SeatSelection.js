@@ -1,0 +1,877 @@
+/* eslint-disable */
+import React from "react";
+import "../../STYLES/SeatSelection.css";
+
+// SVG representing a standard bus seater seat (facing left/front towards driver, upright text)
+function SeaterIcon({ label }) {
+  return (
+    <svg
+      className="seat-icon seat-icon--seater"
+      viewBox="0 0 44 44"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <rect x="2" y="2" width="40" height="40" rx="6" className="seat-body" strokeWidth="2" />
+      {/* Headrest on the right (so passenger faces left/driver side) */}
+      <rect x="34" y="12" width="5" height="20" rx="1.5" className="seat-headrest" />
+      {/* Armrests on top and bottom */}
+      <rect x="10" y="5" width="20" height="4" rx="1.5" className="seat-armrest" />
+      <rect x="10" y="35" width="20" height="4" rx="1.5" className="seat-armrest" />
+      {/* Label text remains upright and direct */}
+      <text x="18" y="26" className="seat-label" textAnchor="middle">
+        {label}
+      </text>
+    </svg>
+  );
+}
+
+// SVG representing a bus sleeper seat (horizontal rectangle, pillow on the left/front)
+function SleeperIcon({ label }) {
+  return (
+    <svg
+      className="seat-icon seat-icon--sleeper"
+      viewBox="0 0 92 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <rect x="2" y="2" width="88" height="36" rx="6" className="seat-body" strokeWidth="2" />
+      <rect x="6" y="6" width="16" height="28" rx="3" className="sleeper-pillow" />
+      <text x="50" y="22" className="seat-label" textAnchor="middle">
+        {label}
+      </text>
+    </svg>
+  );
+}
+
+// SVG representing a bus vertical sleeper seat (vertical rectangle, pillow on the top)
+function VerticalSleeperIcon({ label }) {
+  return (
+    <svg
+      className="seat-icon seat-icon--vertical-sleeper"
+      viewBox="0 0 40 92"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <rect x="2" y="2" width="36" height="88" rx="6" className="seat-body" strokeWidth="2" />
+      <rect x="6" y="6" width="28" height="16" rx="3" className="sleeper-pillow" />
+      <text x="20" y="50" className="seat-label" textAnchor="middle">
+        {label}
+      </text>
+    </svg>
+  );
+}
+
+// SVG representing a flight seat (curved top backrest, slim armrests)
+function FlightSeatIcon({ label }) {
+  return (
+    <svg
+      className="seat-icon seat-icon--flight"
+      viewBox="0 0 40 44"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M6 9C6 4 34 4 34 9V38C34 40 32 42 30 42H10C8 42 6 40 6 38V9Z"
+        className="seat-body"
+        strokeWidth="2"
+      />
+      <rect x="12" y="6" width="16" height="7" rx="3.5" className="seat-headrest" />
+      <line x1="3" y1="16" x2="3" y2="34" className="seat-armrest" strokeWidth="2.2" strokeLinecap="round" />
+      <line x1="37" y1="16" x2="37" y2="34" className="seat-armrest" strokeWidth="2.2" strokeLinecap="round" />
+      <text x="20" y="26" className="seat-label" textAnchor="middle">
+        {label}
+      </text>
+    </svg>
+  );
+}
+
+// SVG representing an exit door (RedBus style)
+function ExitIcon({ type }) {
+  if (type === 'emergency') {
+    return (
+      <svg
+        className="seat-icon seat-icon--exit"
+        viewBox="0 0 60 44"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+        style={{ width: '100%', height: '100%' }}
+      >
+        <text x="30" y="16" fill="#64748b" fontSize="9" fontWeight="600" textAnchor="middle">
+          Emergency
+        </text>
+        <text x="30" y="27" fill="#64748b" fontSize="9" fontWeight="600" textAnchor="middle">
+          Exit
+        </text>
+        <line x1="12" y1="36" x2="42" y2="36" stroke="#64748b" strokeWidth="1.5" />
+        <polygon points="48,36 40,32 40,40" fill="#64748b" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg
+      className="seat-icon seat-icon--exit"
+      viewBox="0 0 44 44"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      style={{ width: '100%', height: '100%' }}
+    >
+      {/* Left Triangle */}
+      <polygon points="2,22 6,18 6,26" fill="#64748b" />
+      
+      {/* Border Box */}
+      <rect x="8" y="10" width="28" height="24" rx="4" stroke="#94a3b8" strokeWidth="1.2" fill="transparent" />
+      
+      {/* Text inside the box */}
+      <text x="22" y="19" fill="#64748b" fontSize="7.5" fontWeight="600" textAnchor="middle">
+        Roof
+      </text>
+      <text x="22" y="28" fill="#64748b" fontSize="7.5" fontWeight="600" textAnchor="middle">
+        Exit
+      </text>
+
+      {/* Right Triangle */}
+      <polygon points="42,22 38,18 38,26" fill="#64748b" />
+    </svg>
+  );
+}
+
+/**
+ * Normalizes an SRDV / SeatSeller API response into a dynamic grid layout structure
+ */
+function normalizeSrdvSeatData(seatData) {
+  if (!seatData) return null;
+
+  const seats = [];
+  const processItem = (seat, forceUpper = null) => {
+    if (!seat || typeof seat !== "object") return;
+
+    const seatName = String(seat.SeatName || seat.seatName || seat.SeatNo || seat.label || "").trim();
+    if (!seatName) return;
+
+    const upperName = seatName.toUpperCase();
+    const isExit = upperName.includes("EXIT") || upperName === "EX" || upperName === "E";
+    const exitType = upperName.includes("BK") || upperName.includes("BACK") || upperName.includes("EMERGENCY") ? "emergency" : "roof";
+    const isStructuralMarker =
+      ["T", "WC", "D", "DR", "E", "EX", "NA", "BLANK", "EMPTY"].includes(upperName) ||
+      /^(T|WC|D|DR|NA|EX|ST)$|EXIT|AISLE|DRIVER|TOILET|WATER|STAIRCASE|STAIR|WASHROOM|VACANT|\bNA\b/i.test(upperName) ||
+      String(seat.SeatType || seat.seatType || "").trim() === "0";
+
+    const rowNo = parseInt(seat.RowNo ?? seat.rowNo ?? seat.Row ?? seat.row ?? 0, 10);
+    const colNo = parseInt(seat.ColumnNo ?? seat.columnNo ?? seat.Column ?? seat.column ?? seat.ColNo ?? seat.colNo ?? 0, 10);
+    const isUpper =
+      forceUpper !== null
+        ? forceUpper
+        : Boolean(seat.IsUpper) || String(seat.IsUpper).toLowerCase() === "true";
+
+    const rawBaseFare = parseFloat(seat?.Price?.BaseFare || 0);
+    const markupVal = parseFloat(seat?.Price?.AgentMarkUp || seat?.Price?.MarkUp || 0) || 0;
+    const b2cDisplayFare =
+      parseFloat(
+        seat?.Price?.B2CDisplayFare ||
+          seat?.Price?.b2cDisplayFare ||
+          seat?.b2cDisplayFare ||
+          0
+      ) || (rawBaseFare > 0 && markupVal > 0 ? rawBaseFare + markupVal : 0) || rawBaseFare || 0;
+
+    const publishedFare =
+      parseFloat(
+        seat?.Price?.PublishedFare ||
+          seat?.Price?.publishedFare ||
+          seat?.publishedFare ||
+          0
+      ) || 0;
+
+    const fare =
+      b2cDisplayFare > 0
+        ? b2cDisplayFare
+        : parseFloat(
+            seat?.Price?.BaseFare ||
+              seat?.SeatFare ||
+              seat?.fare ||
+              publishedFare ||
+              0
+          ) || 0;
+
+    const isAvailable =
+      fare > 0 && String(seat.SeatStatus ?? seat.seatStatus ?? "true").toLowerCase() === "true";
+    const isLadies = String(seat.IsLadiesSeat ?? seat.isLadiesSeat ?? "false").toLowerCase() === "true";
+    const isMales = String(seat.IsMalesSeat ?? seat.isMalesSeat ?? "false").toLowerCase() === "true";
+
+    const width = parseInt(seat.Width ?? seat.width ?? 1, 10) || 1;
+    const length = parseInt(seat.Length ?? seat.length ?? seat.Height ?? seat.height ?? 1, 10) || 1;
+
+    const rawSeatType = String(seat.SeatType || seat.seatType || "").toLowerCase().trim();
+    const isSemiSleeper = rawSeatType.includes("semi");
+    const isVerticalSleeper = rawSeatType.includes("vertical");
+    const isHorizontalSleeper =
+      !isSemiSleeper &&
+      !isVerticalSleeper &&
+      (rawSeatType.includes("sleeper") ||
+       rawSeatType.includes("berth") ||
+       String(seat.DoubleBirth).toLowerCase() === "true");
+
+    seats.push({
+      raw: seat,
+      id: seat.SeatIndex || seat.id || seatName || `${rowNo}-${colNo}`,
+      label: seatName,
+      displayLabel: seatName,
+      rowNo,
+      colNo,
+      isUpper,
+      isAvailable,
+      isLadies,
+      isMales,
+      kind: isExit ? "exit" : isStructuralMarker ? "structural" : isVerticalSleeper ? "vertical-sleeper" : isHorizontalSleeper ? "sleeper" : "seater",
+      exitType,
+      width,
+      length,
+      fare,
+      b2cDisplayFare: fare,
+      priceInr: fare,
+      publishedFare: publishedFare || fare,
+      status: isAvailable ? "available" : "booked",
+      bookedGender: isLadies ? "Female" : isMales ? "Male" : null,
+    });
+  };
+
+  const traverse = (container, forceUpper = null) => {
+    if (!container || typeof container !== "object") return;
+
+    if (container.SeatName || container.SeatNo || container.SeatType) {
+      processItem(container, forceUpper);
+      return;
+    }
+
+    const items = Array.isArray(container) ? container : Object.values(container);
+    items.forEach((item) => {
+      if (!item || typeof item !== "object") return;
+      if (item.SeatName || item.SeatNo || item.SeatType) {
+        processItem(item, forceUpper);
+      } else {
+        traverse(item, forceUpper);
+      }
+    });
+  };
+
+  if (seatData.Result) {
+    traverse(seatData.Result, false);
+  }
+  if (seatData.ResultUpperSeat) {
+    traverse(seatData.ResultUpperSeat, true);
+  }
+  if (seats.length === 0) {
+    traverse(seatData, null);
+  }
+
+  if (seats.length === 0) return null;
+  const validCoordinates = seats.some((s) => s.rowNo > 0 || s.colNo > 0);
+  if (!validCoordinates) return null;
+
+  const lower = seats.filter((s) => !s.isUpper);
+  const upper = seats.filter((s) => s.isUpper);
+
+  const finalLower = lower.length > 0 ? lower : upper;
+  const finalUpper = lower.length > 0 && upper.length > 0 ? upper : [];
+
+  return { lower: finalLower, upper: finalUpper, hasUpper: finalUpper.length > 0 };
+}
+
+export default function SeatSelection({
+  vehicleType = "bus",
+  selectedSeatLabels = [],
+  onSeatToggle,
+  
+  // SRDV Direct JSON Data
+  seatData = null,
+  
+  // Flight Props
+  cabinData = null,
+  seatsByLabel = new Map(),
+
+  // Bus Props
+  layoutKind = "seater",
+  hasDeckSections = false,
+  hasBackendSections = false,
+  seatDeckGroups = [],
+  lowerDeckRows = [],
+  upperDeckRows = [],
+  mainDeckRows = [],
+  allSeatRows = [],
+  activeFareFilter = "all",
+  onSeatHover = () => {},
+  onSeatMouseLeave = () => {},
+}) {
+  const srdvParsed = React.useMemo(() => normalizeSrdvSeatData(seatData), [seatData]);
+  // --- BUS RENDERERS ---
+
+  const renderBusSeatButton = (seat) => {
+    if (!seat) {
+      return <div className="seat-gap-placeholder" key={Math.random()} />;
+    }
+
+    const isSelected = selectedSeatLabels.includes(seat.label);
+    const seatFareVal = Number(seat.b2cDisplayFare || seat.fare || seat.priceInr || 0);
+    const isDimmed = activeFareFilter !== "all" && Math.abs(Number(activeFareFilter) - seatFareVal) > 0.01;
+    const isBooked = seat.status === "booked";
+
+    const isBookedFemale = isBooked && seat.bookedGender === "Female";
+    const isBookedMale = isBooked && seat.bookedGender === "Male";
+
+    const isNextToBookedFemale =
+      !isBooked &&
+      (seat.bookedGender === "Female" ||
+        getAdjacentSeatLabelsFromRows(seat.label, allSeatRows).some((adjacentLabel) => {
+          const adj = seatsByLabel.get(adjacentLabel);
+          return adj?.status === "booked" && adj?.bookedGender === "Female";
+        }));
+
+    const isNextToBookedMale =
+      !isBooked &&
+      (seat.bookedGender === "Male" ||
+        getAdjacentSeatLabelsFromRows(seat.label, allSeatRows).some((adjacentLabel) => {
+          const adj = seatsByLabel.get(adjacentLabel);
+          return adj?.status === "booked" && adj?.bookedGender === "Male";
+        }));
+
+    const statusClass = isSelected
+      ? "status-selected"
+      : isBooked
+      ? "status-booked"
+      : seat.status === "extra"
+      ? "status-extra"
+      : "status-available";
+
+    const hoverClass = isBookedFemale
+      ? "status-booked-female"
+      : isBookedMale
+      ? "status-booked-male"
+      : isNextToBookedFemale
+      ? "status-female-adjacent"
+      : isNextToBookedMale
+      ? "status-male-adjacent"
+      : "";
+
+    const seatWrapperClass = [
+      "seat-button-wrapper",
+      seat.kind === "sleeper" ? "sleeper-seat" : "seater-seat",
+      statusClass,
+      hoverClass,
+      isDimmed ? "opacity-40" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    return (
+      <button
+        key={seat.id}
+        type="button"
+        className={seatWrapperClass}
+        onClick={() => onSeatToggle(seat)}
+        onMouseEnter={(event) =>
+          onSeatHover({
+            label: seat.label,
+            displayLabel: seat.displayLabel,
+            fare: seat.b2cDisplayFare || seat.fare,
+            status: seat.status,
+            bookedGender: seat.bookedGender,
+            isNextToBookedFemale,
+            isNextToBookedMale,
+            x: event.clientX,
+            y: event.clientY,
+          })
+        }
+        onMouseMove={(event) =>
+          onSeatHover((previous) =>
+            previous && previous.label === seat.label
+              ? { ...previous, x: event.clientX, y: event.clientY }
+              : previous
+          )
+        }
+        onMouseLeave={onSeatMouseLeave}
+        disabled={isBooked || isDimmed}
+        title={`Seat: ${seat.displayLabel || seat.label} | Fare: ₹${seat.b2cDisplayFare || seat.fare}`}
+      >
+        {seat.kind === "sleeper" ? (
+          <SleeperIcon label={seat.displayLabel || seat.label} />
+        ) : (
+          <SeaterIcon label={seat.displayLabel || seat.label} />
+        )}
+      </button>
+    );
+  };
+
+  const getAdjacentSeatLabelsFromRows = (seatLabel, rows) => {
+    const normalized = String(seatLabel || "").trim();
+    if (!normalized) return [];
+
+    for (const row of rows) {
+      if (!Array.isArray(row)) continue;
+      const idx = row.findIndex((s) => s?.label === normalized);
+      if (idx === -1) continue;
+
+      const rowAnchor = row.find(Boolean);
+      const configuredAisleAfterColumn = Number(rowAnchor?.aisleAfterColumn);
+      const aisleIndex = Number.isFinite(configuredAisleAfterColumn)
+        ? configuredAisleAfterColumn
+        : row.length === 4
+        ? 1
+        : -1;
+
+      return [idx - 1, idx + 1]
+        .filter((adjacentIndex) => {
+          if (adjacentIndex < 0 || adjacentIndex >= row.length || !row[adjacentIndex]) {
+            return false;
+          }
+          return aisleIndex < 0 || Math.min(idx, adjacentIndex) !== aisleIndex;
+        })
+        .map((adjacentIndex) => row[adjacentIndex].label);
+    }
+    return [];
+  };
+
+  const renderBusDeckContent = (rows) => {
+    if (!rows || rows.length === 0) {
+      return <div className="text-center p-8 text-slate-400">No seats available on this deck</div>;
+    }
+
+    const firstSeat = rows.flat().find(Boolean);
+    const configuredAisleAfterColumn = Number(firstSeat?.aisleAfterColumn);
+    const aisleAfterColumn = Number.isFinite(configuredAisleAfterColumn) ? configuredAisleAfterColumn : -1;
+
+    return (
+      <div className="seats-grid-layout">
+        {rows.map((row, rowIndex) => {
+          if (!row) return null;
+          
+          // Standard generated seater deck (usually 4 seats with aisle in center)
+          if (row.length === 4 && aisleAfterColumn === -1) {
+            return (
+              <div className="seat-row-wrapper" key={`row-${rowIndex}`}>
+                {renderBusSeatButton(row[0])}
+                {renderBusSeatButton(row[1])}
+                <div className="aisle-spacer-col bus-horizontal-aisle" />
+                {renderBusSeatButton(row[2])}
+                {renderBusSeatButton(row[3])}
+              </div>
+            );
+          }
+
+          // Otherwise, render seats and insert aisle spacer column after aisleAfterColumn
+          return (
+            <div className="seat-row-wrapper" key={`row-${rowIndex}`}>
+              {row.map((seat, colIndex) => (
+                <React.Fragment key={`cell-${rowIndex}-${colIndex}`}>
+                  {renderBusSeatButton(seat)}
+                  {colIndex === aisleAfterColumn && (
+                    <div className="aisle-spacer-col bus-horizontal-aisle" />
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderBusVerticalSection = (section) => {
+    if (!section || !section.rows) return null;
+
+    return (
+      <React.Fragment key={section.name}>
+        {renderBusDeckContent(section.rows)}
+      </React.Fragment>
+    );
+  };
+
+  const renderBusShell = (content, deckLabel, showSteering = false) => (
+    <div className="bus-coach-container">
+      {deckLabel && (
+        <div className="bus-deck-label-container">
+          <span className="bus-deck-label-text">{deckLabel}</span>
+          {showSteering && <div className="bus-deck-steering-wheel">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="#475569" strokeWidth="2.2" />
+              <circle cx="12" cy="12" r="2.5" fill="#475569" />
+              <path d="M4 12h16" stroke="#475569" strokeWidth="1.8" />
+              <path d="M12 12v8" stroke="#475569" strokeWidth="1.8" />
+            </svg>
+          </div>}
+        </div>
+      )}
+      {/* Bus Coach floor containing actual grid running left-to-right */}
+      <div className="bus-coach-floor">{content}</div>
+    </div>
+  );  const renderSrdvGridDeck = (deckSeats, deckLabel, showSteering = false) => {
+    if (!deckSeats || deckSeats.length === 0) return null;
+
+    const nonSeatPatterns = /EXIT|AISLE|DRIVER|TOILET|WATER|STAIRCASE|STAIR|WASHROOM|VACANT|NA\b/i;
+    const validSeats = deckSeats.filter(
+      (s) => s.kind === "structural" || s.kind === "exit" || !nonSeatPatterns.test(String(s.label || ""))
+    );
+
+    if (validSeats.length === 0) return null;
+    // Collect all unique rows/cols
+    const rowSet = new Set();
+    const colSet = new Set();
+    validSeats.forEach((s) => {
+      rowSet.add(s.rowNo || 0);
+      colSet.add(s.colNo || 0);
+    });
+
+    const uniqueRows = Array.from(rowSet).sort((a, b) => a - b);
+    const rowMap = new Map();
+    let gridRow = 1;
+    uniqueRows.forEach((rowVal, idx) => {
+      if (idx > 0 && rowVal - uniqueRows[idx - 1] > 1) {
+        gridRow += 1; // Create aisle gap
+      }
+      rowMap.set(rowVal, gridRow);
+      gridRow += 1;
+    });
+    const maxGridRows = gridRow - 1;
+
+    const uniqueCols = Array.from(colSet).sort((a, b) => a - b);
+    const colMap = new Map();
+    let gridCol = 1;
+    uniqueCols.forEach((colVal, idx) => {
+      if (idx > 0 && colVal - uniqueCols[idx - 1] > 1) {
+        gridCol += 1; // Create aisle gap
+      }
+      colMap.set(colVal, gridCol);
+      gridCol += 1;
+    });
+    const maxGridCols = gridCol - 1;
+
+    const hasSeater = validSeats.some((s) => s.kind === "seater" || s.kind === "semi-sleeper");
+    const isOnlySleeper = validSeats.every((s) => s.kind === "sleeper");
+
+    const baseCellW = isOnlySleeper ? 84 : 44;
+    const baseCellH = isOnlySleeper ? 34 : 36;
+
+    const gridStyle = {
+      display: "grid",
+      gridTemplateRows: `repeat(${maxGridRows}, auto)`,
+      gridTemplateColumns: `repeat(${maxGridCols}, 44px)`,
+      gap: "18px 6px",
+    };
+
+    return (
+      <div className="bus-coach-container srdv-grid-deck-container">
+        {deckLabel && (
+          <div className="bus-deck-label-container">
+            {showSteering && <div className="bus-deck-steering-wheel" title="Front / Driver">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="#475569" strokeWidth="2.2" />
+                <circle cx="12" cy="12" r="2.5" fill="#475569" />
+                <path d="M4 12h16" stroke="#475569" strokeWidth="1.8" />
+                <path d="M12 12v8" stroke="#475569" strokeWidth="1.8" />
+              </svg>
+            </div>}
+            <span className="bus-deck-label-text">{deckLabel}</span>
+          </div>
+        )}
+        <div className="bus-coach-floor srdv-coach-scroll">
+          <div className="srdv-grid-layout" style={gridStyle}>
+            {validSeats.map((seat, index) => {
+              const isSelected = selectedSeatLabels.includes(seat.label);
+              const isBooked = !seat.isAvailable;
+              const seatFareVal = Number(seat.b2cDisplayFare || seat.fare || seat.priceInr || 0);
+              const isDimmed = activeFareFilter !== "all" && Math.abs(Number(activeFareFilter) - seatFareVal) > 0.01;
+
+              let statusClass = "status-available";
+              if (isBooked) statusClass = "status-booked";
+              else if (isSelected) statusClass = "status-selected";
+
+              let genderClass = "";
+              if (seat.isLadies) genderClass = "status-ladies-seat";
+              else if (seat.isMales) genderClass = "status-males-seat";
+
+              const seatWrapperClass = [
+                "srdv-grid-seat-box",
+                seat.kind === "exit" ? "srdv-exit-cell" : seat.kind === "structural" ? "srdv-structural-cell" : seat.kind === "vertical-sleeper" ? "srdv-vertical-sleeper-cell" : seat.kind === "sleeper" ? "srdv-sleeper-cell" : "srdv-seater-cell",
+                statusClass,
+                genderClass,
+                isDimmed ? "opacity-40" : "",
+              ]
+                .filter(Boolean)
+                .join(" ");
+
+              const layoutRow = rowMap.get(seat.rowNo || 0) || 1;
+              const layoutCol = colMap.get(seat.colNo || 0) || 1;
+
+              const isVert = seat.kind === "vertical-sleeper";
+              const isHorz = seat.kind === "sleeper";
+
+              // Determine spanning: default to 2 for sleepers if API width/length is missing
+              const colSpan = seat.width > 1 ? seat.width : (isHorz ? 2 : 1);
+              const rowSpan = seat.length > 1 ? seat.length : (isVert ? 2 : 1);
+
+              const seatW = seat.kind === "vertical-sleeper" ? 44 : seat.kind === "sleeper" ? 84 : 44;
+              const seatH = seat.kind === "vertical-sleeper" ? 84 : seat.kind === "sleeper" ? 34 : 36;
+
+              const seatItemStyle = {
+                gridRow: `${layoutRow} / span ${rowSpan}`,
+                gridColumn: `${layoutCol} / span ${colSpan}`,
+              };
+
+              const displayFareVal = seat.b2cDisplayFare || seat.fare;
+
+              return (
+                <button
+                  key={seat.id || `${seat.label}-${index}`}
+                  type="button"
+                  style={seatItemStyle}
+                  className={seatWrapperClass}
+                  onClick={() => (isBooked || isDimmed ? null : onSeatToggle(seat))}
+                  onMouseEnter={(event) =>
+                    onSeatHover({
+                      label: seat.label,
+                      displayLabel: seat.displayLabel || seat.label,
+                      fare: displayFareVal,
+                      status: seat.status,
+                      bookedGender: seat.bookedGender,
+                      isNextToBookedFemale: false,
+                      isNextToBookedMale: false,
+                      x: event.clientX,
+                      y: event.clientY,
+                    })
+                  }
+                  onMouseMove={(event) =>
+                    onSeatHover((previous) =>
+                      previous && previous.label === seat.label
+                        ? { ...previous, x: event.clientX, y: event.clientY }
+                        : previous
+                    )
+                  }
+                  onMouseLeave={onSeatMouseLeave}
+                  disabled={isBooked || isDimmed}
+                  title={`Seat: ${seat.label} | Fare: ₹${displayFareVal}`}
+                >
+                  {seat.kind === "exit" ? (
+                    <ExitIcon type={seat.exitType} />
+                  ) : seat.kind === "structural" ? (
+                    <div className="srdv-structural-text" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 600, color: '#64748b' }}>
+                      {seat.displayLabel || seat.label}
+                    </div>
+                  ) : seat.kind === "vertical-sleeper" ? (
+                    <VerticalSleeperIcon label={isBooked ? "" : seat.label} />
+                  ) : seat.kind === "sleeper" ? (
+                    <SleeperIcon label={isBooked ? "" : seat.label} />
+                  ) : (
+                    <SeaterIcon label={isBooked ? "" : seat.label} />
+                  )}
+                  {displayFareVal > 0 && (
+                    <span className="srdv-seat-fare-label">₹{displayFareVal}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderBusWidget = () => {
+    // 0. Dynamic SRDV API Grid Layout rendering
+    if (srdvParsed) {
+      return (
+        <div className="bus-decks-container">
+          {srdvParsed.upper.length > 0 && (
+            <div className="bus-deck-wrapper">
+              {renderSrdvGridDeck(srdvParsed.upper, "Upper Deck")}
+            </div>
+          )}
+          {srdvParsed.lower.length > 0 && (
+            <div className="bus-deck-wrapper">
+              {renderSrdvGridDeck(srdvParsed.lower, srdvParsed.hasUpper ? "Lower Deck" : "Bus Layout", true)}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // 1. Backend sections rendering (complex API mapping)
+    if (hasDeckSections && hasBackendSections && seatDeckGroups.length > 0) {
+      return (
+        <div className="bus-decks-container">
+          {[...seatDeckGroups].sort((a, b) => /upper/i.test(a.name) ? -1 : /upper/i.test(b.name) ? 1 : 0).map((deckGroup) => (
+            <div key={deckGroup.name} className="bus-deck-wrapper">
+              {renderBusShell(
+                deckGroup.sections.map((sec) => renderBusVerticalSection(sec)),
+                deckGroup.name.replace(/ Deck/gi, ''),
+                /lower/i.test(deckGroup.name)
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // 2. Multi-deck generated fallback (Lower Deck on top / Upper Deck below it)
+    if (hasDeckSections) {
+      return (
+        <div className="bus-decks-container">
+          {upperDeckRows.length > 0 && (
+            <div className="bus-deck-wrapper">
+              {renderBusShell(renderBusDeckContent(upperDeckRows), "Upper")}
+            </div>
+          )}
+          {lowerDeckRows.length > 0 && (
+            <div className="bus-deck-wrapper">
+              {renderBusShell(renderBusDeckContent(lowerDeckRows), "Lower", true)}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // 3. Single deck generated layout (Main Deck)
+    return (
+      <div className="bus-deck-wrapper">
+        {renderBusShell(renderBusDeckContent(mainDeckRows), "Main")}
+      </div>
+    );
+  };
+
+  // --- FLIGHT RENDERERS ---
+
+  const renderFlightSeatButton = (seat, seatLetter) => {
+    if (!seat) {
+      return <div className="seat-gap-placeholder" key={Math.random()} />;
+    }
+
+    const isSelected = selectedSeatLabels.includes(seat.label);
+    const isBooked = seat.status === "booked";
+    const isBusiness = cabinData.seatLetters.length === 4;
+
+    const statusClass = isSelected
+      ? "status-selected"
+      : isBooked
+      ? "status-booked"
+      : seat.status === "extra"
+      ? "status-extra"
+      : "status-available";
+
+    const seatWrapperClass = [
+      "seat-button-wrapper",
+      isBusiness ? "business-seat" : "economy-seat",
+      statusClass,
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    return (
+      <button
+        key={seat.id}
+        type="button"
+        className={seatWrapperClass}
+        onClick={() => onSeatToggle(seat)}
+        disabled={isBooked}
+        title={`Seat: ${seat.label} | ${seat.status === "extra" ? "Extra Legroom (+₹720)" : "Standard"}`}
+      >
+        <FlightSeatIcon label={seatLetter} />
+      </button>
+    );
+  };
+
+  const renderFlightWidget = () => {
+    if (!cabinData || !cabinData.rows) {
+      return <div className="text-center p-8 text-slate-400">Loading flight layout...</div>;
+    }
+
+    const exitRows = new Set([12, 15]); // Emergency exits standard rows
+
+    return (
+      <div className="flight-fuselage-container">
+        {/* Curved Airplane Nose Cone */}
+        <div className="flight-nose-cone">
+          <div className="flight-cockpit-window">Cockpit</div>
+        </div>
+
+        <div className="seats-grid-layout mt-4">
+          {cabinData.rows.map((rowNumber) => {
+            const aisleIndex = Math.ceil(cabinData.seatLetters.length / 2);
+            
+            // Draw horizontal exit row break
+            const isExitRow = exitRows.has(rowNumber);
+
+            return (
+              <React.Fragment key={`row-wrapper-${rowNumber}`}>
+                {isExitRow && (
+                  <div className="exit-row-divider">
+                    ◄ EXIT ROW ── EMERGENCY EXIT ◄
+                  </div>
+                )}
+                <div className="seat-row-wrapper">
+                  {/* Row Number left */}
+                  <div className="seat-row-number">{rowNumber}</div>
+
+                  {/* Seat columns */}
+                  {cabinData.seatLetters.map((letter, idx) => {
+                    const seat = seatsByLabel.get(`${rowNumber}${letter}`);
+
+                    return (
+                      <React.Fragment key={`${rowNumber}-${letter}`}>
+                        {idx === aisleIndex && (
+                          <div className="aisle-spacer-col" />
+                        )}
+                        {renderFlightSeatButton(seat, letter)}
+                      </React.Fragment>
+                    );
+                  })}
+
+                  {/* Row Number right */}
+                  <div className="seat-row-number">{rowNumber}</div>
+                </div>
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // --- RENDER MAIN COMPONENT ---
+
+  return (
+    <div className="seat-selection-component">
+      {/* Legend Block */}
+      {vehicleType !== "bus" && (
+        <div className="seat-selection-legends-container">
+          <div className="seat-selection-legend main-legend-pill">
+            <div className="legend-item">
+              <div className="legend-color available" />
+              <span>Available</span>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color selected" />
+              <span>Selected</span>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color booked" />
+              <span>Booked</span>
+            </div>
+            {vehicleType === "flight" && (
+              <div className="legend-item">
+                <div className="legend-color extra-legroom" />
+                <span>Extra Legroom (+₹720)</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Main Seat Layout Widget */}
+      {vehicleType === "bus" ? renderBusWidget() : renderFlightWidget()}
+    </div>
+  );
+}

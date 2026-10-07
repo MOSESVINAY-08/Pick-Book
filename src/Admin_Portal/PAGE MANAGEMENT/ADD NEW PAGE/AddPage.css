@@ -1,0 +1,249 @@
+* {
+  box-sizing: border-box;
+}
+
+.add-container {
+  padding: 15px 24px 40px 24px;
+  background: transparent !important;
+  font-family: "Segoe UI", sans-serif;
+}
+
+/* ── Header inside container ── */
+.add-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0 20px 0;
+  border-bottom: 1.5px solid #f1f5f9;
+  margin-bottom: 20px;
+}
+
+.add-page-heading {
+  font-size: 1.5rem !important;
+  font-weight: 500 !important;
+  color: #A51C49 !important;
+  margin: 0 !important;
+}
+
+.add-page-list-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 22px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #A51C49 !important;
+  border: 2px solid #A51C49 !important;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.add-page-list-btn:hover {
+  background: #851237 !important;
+  border-color: #851237 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(194, 24, 91, 0.25);
+}
+
+.section {
+  background: white !important;
+  margin-top: 12px;
+  margin-bottom: 30px !important;
+  padding: 24px !important;
+  border-radius: 12px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 10px 30px rgba(22, 65, 128, 0.04), 0 1px 3px rgba(22, 65, 128, 0.02) !important;
+  width: 100%;
+}
+
+/* ── Full Solid Cresip Pink Background for Ribbons ── */
+.section h3 {
+  background: #A51C49 !important;
+  color: #ffffff !important;
+  padding: 8px 16px !important;
+  margin-bottom: 15px;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  border-radius: 6px !important;
+  border-bottom: none !important;
+}
+
+.section h3::before,
+.section h3::after {
+  display: none !important;
+}
+
+.section h3 span.title-tab {
+  background: transparent !important;
+  padding: 0 !important;
+  clip-path: none !important;
+  color: #ffffff !important;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px 16px;
+  margin-bottom: 4px;
+  padding: 4px 10px;
+}
+
+input,
+select,
+textarea {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 6px;
+  width: 100%;
+  background: #ffffff !important;
+  color: #1e293b !important;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+input[type="text"],
+select {
+  height: 38px;
+}
+
+/* Equal styling for file inputs */
+input[type="file"] {
+  height: 38px;
+  padding: 5px 12px;
+  line-height: normal;
+  background: #ffffff !important;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #A51C49 !important;
+  box-shadow: 0 0 0 3px rgba(194, 24, 91, 0.15) !important;
+}
+
+textarea {
+  min-height: 70px;
+  height: auto;
+  resize: none !important;
+  overflow-y: hidden;
+}
+
+.editor {
+  min-height: 100px;
+  height: auto;
+  line-height: 1.5;
+  resize: none !important;
+  overflow-y: hidden;
+}
+
+/* ── Submit Area (spaced footer with border-top) ── */
+.submit-area {
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin-top: 14px !important;
+  padding-top: 12px !important;
+  border-top: 1px solid #e2e8f0 !important;
+}
+
+/* High-specificity Submit Button color: Blue */
+body .add-container .submit-area .submit-btn,
+body .submit-btn,
+button.submit-btn {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border: 1px solid #2563eb !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  margin: 0 !important;
+  padding: 0 22px !important;
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+  font-size: 0.84rem !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 5px rgba(37, 99, 235, 0.2) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
+}
+
+body .add-container .submit-area .submit-btn:hover,
+body .submit-btn:hover,
+button.submit-btn:hover {
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.28) !important;
+}
+
+/* High-specificity Reset Button color: Gray */
+body .add-container .submit-area .reset-btn,
+body .reset-btn,
+button.reset-btn {
+  background: #64748b !important;
+  color: #ffffff !important;
+  border: 1px solid #64748b !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  margin: 0 !important;
+  padding: 0 22px !important;
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+  font-size: 0.84rem !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 5px rgba(100, 116, 139, 0.2) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
+}
+
+body .add-container .submit-area .reset-btn:hover,
+body .reset-btn:hover,
+button.reset-btn:hover {
+  background: #475569 !important;
+  border-color: #475569 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 3px 8px rgba(100, 116, 139, 0.28) !important;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px !important;
+}
+
+/* Fields label color black */
+.form-group label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #000000 !important;
+  margin-top: 0px !important;
+  text-transform: uppercase;
+}
+
+.current-file {
+  font-size: 11px;
+  color: #A51C49 !important;
+  font-weight: normal;
+  word-break: break-all;
+}

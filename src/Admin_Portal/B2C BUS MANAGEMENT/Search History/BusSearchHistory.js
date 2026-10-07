@@ -1,0 +1,1357 @@
+/* eslint-disable */
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
+import adminFeaturedOffersService from "../../../services/adminFeaturedOffersService";
+import "./BusSearchHistory.css";
+import AdminPagination from "../../../components/AdminPagination";
+import { RefreshCw, AlertCircle } from "lucide-react";
+
+const DEFAULT_FILTERS = {
+  query: "",
+  customerName: "",
+  fromDate: "",
+  toDate: "",
+};
+
+const PAGE_SIZE = 10;
+
+const normalizeText = (value, fallback = "") => {
+  const text = String(value ?? "").trim();
+  return text || fallback;
+};
+
+const SEARCH_HISTORY_STORAGE_KEY = "user_search_history_logs";
+
+function normalizeCount(value) {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? Math.max(0, numberValue) : 0;
+}
+
+function readRawSearchHistory() {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(SEARCH_HISTORY_STORAGE_KEY) || "";
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeRawSearchHistory(records) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(SEARCH_HISTORY_STORAGE_KEY, JSON.stringify(records));
+  } catch {
+    // Ignore storage quota errors.
+  }
+}
+
+function readSearchHistoryEntries({ searchType } = {}) {
+  const typeFilter = normalizeText(searchType, "").toLowerCase();
+
+  return readRawSearchHistory()
+    .map((record) => ({
+      id: normalizeText(record?.id, ""),
+      searchType: normalizeText(record?.searchType, "Bus"),
+      searchDateUtc: normalizeText(record?.searchDateUtc, ""),
+      departDate: normalizeText(record?.departDate, ""),
+      fromCity: normalizeText(record?.fromCity, ""),
+      toCity: normalizeText(record?.toCity, ""),
+      fromCityCode: normalizeText(record?.fromCityCode, ""),
+      toCityCode: normalizeText(record?.toCityCode, ""),
+      travelType: normalizeText(record?.travelType, ""),
+      adultCount: normalizeCount(record?.adultCount),
+      childCount: normalizeCount(record?.childCount),
+      infantCount: normalizeCount(record?.infantCount),
+      customerName: normalizeText(record?.customerName, "No Login"),
+      customerId: normalizeText(record?.customerId, "0"),
+      resultsCount: Number(record?.resultsCount) || 0,
+    }))
+    .filter((record) => {
+      if (!record.id || !record.searchDateUtc) {
+        return false;
+      }
+
+      if (!typeFilter) {
+        return true;
+      }
+
+      return record.searchType.toLowerCase() === typeFilter;
+    });
+}
+
+function clearSearchHistoryEntries({ searchType } = {}) {
+  const typeFilter = normalizeText(searchType, "").toLowerCase();
+
+  if (!typeFilter) {
+    writeRawSearchHistory([]);
+    return;
+  }
+
+  const remaining = readRawSearchHistory().filter((record) => {
+    const recordType = normalizeText(record?.searchType, "").toLowerCase();
+    return recordType !== typeFilter;
+  });
+
+  writeRawSearchHistory(remaining);
+}
+
+const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
+const BUS_BOOKINGS_ROOT = "/api/BusBookings";
+const BUS_SEARCH_LOGS_ROOT = "/api/admin/bus-search-logs";
+const DEFAULT_API_USER_ID =
+  String(process.env.REACT_APP_API_USER_ID || "").trim() || "user_123";
+
+function isLocalDevelopment() {
+  if (process.env.NODE_ENV !== "development") {
+    return false;
+  }
+
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return LOCAL_HOSTNAMES.has(window.location.hostname);
+}
+
+function resolveApiBaseUrl(...explicitBases) {
+  const preferProxyInDev =
+    isLocalDevelopment() &&
+    String(process.env.REACT_APP_USE_DIRECT_API_IN_DEV || "").toLowerCase() !==
+    "true";
+
+  if (preferProxyInDev) {
+    return "";
+  }
+
+  return "";
+}
+
+const BUS_API_BASE_URL = "";
+
+function toAbsoluteUrl(urlOrPath) {
+  if (/^https?:\/\//i.test(urlOrPath)) {
+    return urlOrPath;
+  }
+
+  if (BUS_API_BASE_URL) {
+    return `${BUS_API_BASE_URL.replace(/\/+$/, "")}/${String(urlOrPath || "").replace(
+      /^\/+/,
+      ""
+    )}`;
+  }
+
+  return urlOrPath;
+}
+
+function shouldUseNgrokBypass(urlOrPath) {
+  try {
+    const parsed = new URL(toAbsoluteUrl(urlOrPath), window.location.origin);
+    return (
+      parsed.hostname.includes("ngrok-free.dev") ||
+      parsed.hostname.includes("ngrok.io")
+    );
+  } catch {
+    return false;
+  }
+}
+
+function buildUrl(path, query = {}) {
+  const base = toAbsoluteUrl(path);
+  const params = new URLSearchParams();
+
+  Object.entries(query).forEach(([key, value]) => {
+    if (value === undefined || value === null) {
+      return;
+    }
+
+    const normalizedValue =
+      typeof value === "string" ? value.trim() : String(value);
+
+    if (normalizedValue) {
+      params.set(key, normalizedValue);
+    }
+  });
+
+  return params.toString() ? `${base}?${params.toString()}` : base;
+}
+
+function resolveCurrentUserId(explicitUserId) {
+  const directValue = normalizeText(explicitUserId, "");
+  if (directValue) {
+    return directValue;
+  }
+
+  if (typeof window === "undefined") {
+    return DEFAULT_API_USER_ID;
+  }
+
+  try {
+    const directStoredUserId = normalizeText(
+      window.localStorage.getItem("userId") ||
+      window.localStorage.getItem("UserId"),
+      ""
+    );
+
+    if (directStoredUserId) {
+      return directStoredUserId;
+    }
+
+    const rawUser = window.localStorage.getItem("user") || "";
+    if (!rawUser) {
+      return DEFAULT_API_USER_ID;
+    }
+
+    const parsed = JSON.parse(rawUser) || {};
+    const nestedUser =
+      parsed.user && typeof parsed.user === "object" ? parsed.user : {};
+
+    const resolved = normalizeText(
+      parsed.userId ||
+      parsed.UserId ||
+      parsed.id ||
+      parsed.Id ||
+      parsed.uid ||
+      parsed.Uid ||
+      nestedUser.userId ||
+      nestedUser.UserId ||
+      nestedUser.id ||
+      nestedUser.Id ||
+      nestedUser.uid ||
+      nestedUser.Uid,
+      ""
+    );
+
+    return resolved || DEFAULT_API_USER_ID;
+  } catch {
+    return DEFAULT_API_USER_ID;
+  }
+}
+
+function readStoredValue(storage, key) {
+  try {
+    return storage?.getItem(key) || "";
+  } catch {
+    return "";
+  }
+}
+
+function getStoredValue(key) {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return (
+    readStoredValue(window.sessionStorage, key) ||
+    readStoredValue(window.localStorage, key)
+  );
+}
+
+function getRequestAuthHeaders(resolvedUserId) {
+  const token =
+    getStoredValue("adminToken") ||
+    getStoredValue("token") ||
+    getStoredValue("authToken") ||
+    getStoredValue("accessToken");
+  const adminId = getStoredValue("adminId");
+  const adminRole = getStoredValue("adminRole");
+
+  return {
+    Accept: "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(resolvedUserId ? { "X-User-Id": resolvedUserId } : {}),
+    ...(adminId ? { "X-Admin-Id": adminId } : {}),
+    ...(adminRole ? { "X-Admin-Role": adminRole } : {}),
+  };
+}
+
+function pickFirst(source, keys, fallback = null) {
+  if (!source || typeof source !== "object") {
+    return fallback;
+  }
+
+  for (const key of keys) {
+    if (source[key] !== undefined && source[key] !== null) {
+      return source[key];
+    }
+  }
+
+  return fallback;
+}
+
+function normalizeBusSearchHistoryRecord(record, index = 0) {
+  const isGuest = Boolean(
+    pickFirst(record, ["isGuest", "IsGuest"], false) ||
+    (!pickFirst(record, ["userId", "UserId"]) && !pickFirst(record, ["customerId", "CustomerId"]))
+  );
+
+  const rawUserId = pickFirst(
+    record,
+    ["userId", "UserId", "customerId", "CustomerId", "userGuid", "UserGuid"],
+    null
+  );
+
+  const resolvedCustomerId =
+    rawUserId !== null && rawUserId !== undefined && String(rawUserId).trim()
+      ? String(rawUserId).trim()
+      : "0";
+
+  const customerNameDirect = pickFirst(
+    record,
+    [
+      "customerName",
+      "CustomerName",
+      "userName",
+      "UserName",
+      "passengerName",
+      "PassengerName",
+      "name",
+      "Name",
+      "fullName",
+      "FullName",
+    ],
+    null
+  );
+
+  const userOrGuestId = String(
+    pickFirst(
+      record,
+      ["userOrGuestId", "UserOrGuestId"],
+      isGuest ? `Guest` : `User #${resolvedCustomerId}`
+    ) || ""
+  );
+
+  const customerName =
+    customerNameDirect || userOrGuestId || (isGuest ? "Guest User" : "Logged User");
+
+  const searchDateUtc = pickFirst(
+    record,
+    [
+      "searchedAtIst",
+      "SearchedAtIst",
+      "searchedAtUtc",
+      "SearchedAtUtc",
+      "searchDateUtc",
+      "SearchDateUtc",
+      "createdAtUtc",
+      "CreatedAtUtc",
+      "searchDate",
+      "SearchDate",
+      "createdAt",
+      "CreatedAt",
+      "searchedAt",
+      "SearchedAt",
+    ],
+    null
+  );
+
+  const searchedAtIst = pickFirst(record, ["searchedAtIst", "SearchedAtIst"], null);
+
+  return {
+    id:
+      pickFirst(
+        record,
+        ["id", "Id", "searchId", "SearchId", "busSearchLogId", "BusSearchLogId"],
+        null
+      ) || `bus-search-${index + 1}`,
+    isGuest,
+    userId: rawUserId ? String(rawUserId) : null,
+    userOrGuestId,
+    customerName,
+    customerId: resolvedCustomerId,
+    searchDateUtc,
+    searchedAtIst,
+    departDate:
+      pickFirst(
+        record,
+        [
+          "journeyDate",
+          "JourneyDate",
+          "departDate",
+          "DepartDate",
+          "departureDate",
+          "DepartureDate",
+          "travelDate",
+          "TravelDate",
+          "date",
+          "Date",
+        ],
+        null
+      ) || null,
+    fromCity: String(
+      pickFirst(
+        record,
+        [
+          "fromCity",
+          "FromCity",
+          "fromCityName",
+          "FromCityName",
+          "sourceCity",
+          "SourceCity",
+          "from",
+          "From",
+        ],
+        ""
+      ) || ""
+    ),
+    toCity: String(
+      pickFirst(
+        record,
+        [
+          "toCity",
+          "ToCity",
+          "toCityName",
+          "ToCityName",
+          "destinationCity",
+          "DestinationCity",
+          "to",
+          "To",
+        ],
+        ""
+      ) || ""
+    ),
+    fromCityCode: String(
+      pickFirst(
+        record,
+        [
+          "fromCityCode",
+          "FromCityCode",
+          "sourceCityCode",
+          "SourceCityCode",
+          "fromCode",
+          "FromCode",
+        ],
+        ""
+      ) || ""
+    ),
+    toCityCode: String(
+      pickFirst(
+        record,
+        [
+          "toCityCode",
+          "ToCityCode",
+          "destinationCityCode",
+          "DestinationCityCode",
+          "toCode",
+          "ToCode",
+        ],
+        ""
+      ) || ""
+    ),
+    searchType: "Bus",
+    raw: record?.raw ? record.raw : record,
+  };
+}
+
+function findFirstArrayPayload(value, depth = 0) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (!value || typeof value !== "object" || depth > 4) {
+    return null;
+  }
+
+  const directArrayCandidates = [
+    value.data,
+    value.items,
+    value.records,
+    value.results,
+    value.value,
+  ];
+
+  for (const candidate of directArrayCandidates) {
+    if (Array.isArray(candidate)) {
+      return candidate;
+    }
+  }
+
+  for (const nestedValue of Object.values(value)) {
+    const nestedArray = findFirstArrayPayload(nestedValue, depth + 1);
+    if (nestedArray) {
+      return nestedArray;
+    }
+  }
+
+  return null;
+}
+
+function extractArrayPayload(payload) {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+
+  return findFirstArrayPayload(payload) || [];
+}
+
+function isLikelyHtmlResponse(payload) {
+  if (typeof payload !== "string") {
+    return false;
+  }
+
+  const text = payload.toLowerCase();
+  return (
+    text.includes("<!doctype html") ||
+    text.includes("<html") ||
+    text.includes("cannot get") ||
+    text.includes("not found")
+  );
+}
+
+function shouldTryNextSearchHistoryEndpoint(error) {
+  const status = Number(error?.status || error?.response?.status);
+  if (Number.isFinite(status) && status === 404) {
+    return true;
+  }
+
+  const message = String(error?.message || "").toLowerCase();
+  return message.includes("cannot get") || message.includes("not found") || message.includes("404");
+}
+
+async function parseResponse(response) {
+  const contentType = response.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  const text = await response.text();
+  return text;
+}
+
+function normalizeErrorMessage(payload) {
+  if (typeof payload === "string") {
+    const text = payload.trim();
+    if (!text) {
+      return "";
+    }
+
+    const preMatch = text.match(/<pre>(.*?)<\/pre>/i);
+    if (preMatch?.[1]) {
+      return preMatch[1].replace(/\s+/g, " ").trim();
+    }
+
+    const noTags = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    if (noTags) {
+      return noTags;
+    }
+
+    return text;
+  }
+
+  if (payload && typeof payload?.message === "string") {
+    return payload.message.trim();
+  }
+
+  return "";
+}
+
+async function requestJson(urlOrPath, options = {}) {
+  const resolvedUserId = resolveCurrentUserId(options.userId);
+  const headers = {
+    ...getRequestAuthHeaders(resolvedUserId),
+    ...(options.headers || {}),
+  };
+
+  if (options.body && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  if (shouldUseNgrokBypass(urlOrPath)) {
+    headers["ngrok-skip-browser-warning"] = "true";
+  }
+
+  const url = toAbsoluteUrl(urlOrPath);
+  const response = await fetch(url, {
+    cache: "no-store",
+    ...options,
+    headers,
+  });
+
+  const payload = await parseResponse(response);
+
+  if (!response.ok) {
+    const normalizedMessage = normalizeErrorMessage(payload);
+    const message =
+      normalizedMessage || `Request failed (${response.status}). Please try again.`;
+    const error = new Error(message);
+    error.status = response.status;
+    error.url = url;
+    throw error;
+  }
+
+  return payload;
+}
+
+const CANDIDATE_BASE_URLS = [
+  ""
+];
+
+const CANDIDATE_ENDPOINTS = [
+  "/api/admin/bus/searches",
+  BUS_SEARCH_LOGS_ROOT,
+  "/api/BusSearchLogs",
+  "/api/admin/bus/search-history",
+  "/api/admin/bus/bus-search-history",
+  "/api/admin/bus-search-history",
+  "/api/BusSearchHistory",
+  "/api/BusSearchHistories",
+  `${BUS_BOOKINGS_ROOT}/admin/search-history`,
+  `${BUS_BOOKINGS_ROOT}/admin/searches`,
+  `${BUS_BOOKINGS_ROOT}/admin/bus-search-history`,
+  `${BUS_BOOKINGS_ROOT}/search-history`,
+  `${BUS_BOOKINGS_ROOT}/searches`,
+  `${BUS_BOOKINGS_ROOT}/bus-search-history`,
+];
+
+async function listAdminBusSearchHistory({
+  query,
+  customerName,
+  fromDate,
+  toDate,
+  limit = 200,
+} = {}) {
+  const queryParams = {};
+  if (limit) queryParams.limit = limit;
+  if (query && String(query).trim()) queryParams.query = String(query).trim();
+  if (customerName && String(customerName).trim()) queryParams.customerName = String(customerName).trim();
+  if (fromDate && String(fromDate).trim()) queryParams.fromDate = String(fromDate).trim();
+  if (toDate && String(toDate).trim()) queryParams.toDate = String(toDate).trim();
+
+  let lastError = null;
+
+  for (const endpoint of CANDIDATE_ENDPOINTS) {
+    for (const baseUrl of CANDIDATE_BASE_URLS) {
+      const fullPath = baseUrl
+        ? `${baseUrl.replace(/\/+$/, "")}${endpoint}`
+        : endpoint;
+
+      const url = buildUrl(fullPath, queryParams);
+
+      try {
+        const payload = await requestJson(url, { method: "GET" });
+        if (isLikelyHtmlResponse(payload)) {
+          throw new Error("Received HTML response page");
+        }
+        const records = extractArrayPayload(payload);
+        if (Array.isArray(records) && records.length > 0) {
+          return records.map((record, index) =>
+            normalizeBusSearchHistoryRecord(record, index)
+          );
+        }
+        if (Array.isArray(records)) {
+          return [];
+        }
+      } catch (error) {
+        lastError = error;
+        if (!shouldTryNextSearchHistoryEndpoint(error)) {
+          // Fall through candidate loop
+        }
+      }
+    }
+  }
+
+  if (lastError && !shouldTryNextSearchHistoryEndpoint(lastError)) {
+    throw lastError;
+  }
+
+  return [];
+}
+
+function parseDateValue(value) {
+  const text = normalizeText(value, "");
+  if (!text) {
+    return null;
+  }
+
+  const ddMmYyyyMatch = text.match(/^(\d{2})[-/](\d{2})[-/](\d{4})(.*)$/);
+  if (ddMmYyyyMatch) {
+    const [, day, month, year, timePart] = ddMmYyyyMatch;
+    const parsed = new Date(`${year}-${month}-${day}${timePart || ""}`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function hasTimezoneSuffix(value) {
+  return /(?:z|[+-]\d{2}:?\d{2})$/i.test(String(value || "").trim());
+}
+
+function parseUtcDate(value) {
+  const text = normalizeText(value, "");
+  if (!text) {
+    return new Date("");
+  }
+
+  if (text.includes(":") && !hasTimezoneSuffix(text)) {
+    return new Date(`${text.replace(" ", "T")}Z`);
+  }
+
+  const parsed = parseDateValue(text);
+  return parsed || new Date(text);
+}
+
+function toDateValue(value) {
+  const parsed = parseUtcDate(value);
+  return Number.isNaN(parsed.getTime()) ? Number.NaN : parsed.getTime();
+}
+
+function formatSearchTime(value) {
+  const parsed = parseUtcDate(value);
+  if (!parsed || Number.isNaN(parsed.getTime())) {
+    return "--";
+  }
+
+  return parsed.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Kolkata",
+  }).toLowerCase();
+}
+
+function formatSearchDate(value) {
+  const parsed = parseUtcDate(value);
+  if (!parsed || Number.isNaN(parsed.getTime())) {
+    return "--";
+  }
+
+  return parsed.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "Asia/Kolkata",
+  }).replace(/\//g, "-");
+}
+
+function formatDepartDate(value) {
+  const parsed = parseDateValue(value);
+  if (!parsed || Number.isNaN(parsed.getTime())) {
+    return normalizeText(value, "--");
+  }
+
+  const day = String(parsed.getDate()).padStart(2, "0");
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const year = parsed.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+
+function mapLocalSearchRecord(record, index = 0) {
+  return normalizeBusSearchHistoryRecord({
+    ...record,
+    id: record?.id || `local-bus-search-${index + 1}`,
+    isLocalFallback: true,
+  }, index);
+}
+
+function mergeSearchHistory(apiRecords, localRecords) {
+  const byKey = new Map();
+
+  [...apiRecords, ...localRecords].forEach((record, index) => {
+    const normalizedRecord = normalizeBusSearchHistoryRecord(record, index);
+    if (record?.isLocalFallback) {
+      normalizedRecord.isLocalFallback = true;
+    }
+
+    const key = normalizedRecord.id ? String(normalizedRecord.id) : `search-row-${index + 1}`;
+    if (!byKey.has(key)) {
+      byKey.set(key, normalizedRecord);
+    }
+  });
+
+  return Array.from(byKey.values()).sort((a, b) => {
+    const left = toDateValue(a.searchDateUtc);
+    const right = toDateValue(b.searchDateUtc);
+    return right - left;
+  });
+}
+
+function buildSegmentLabel(record) {
+  const fromPart = normalizeText(record.fromCity, "--");
+  const toPart = normalizeText(record.toCity, "--");
+  const fromCode = normalizeText(record.fromCityCode, "");
+  const toCode = normalizeText(record.toCityCode, "");
+
+  const sourceLabel = fromCode && fromCode !== fromPart ? `${fromPart} (${fromCode})` : fromPart;
+  const destinationLabel = toCode && toCode !== toPart ? `${toPart} (${toCode})` : toPart;
+
+  return `${sourceLabel} \u27A4 ${destinationLabel}`;
+}
+
+function buildCustomerLabel(record) {
+  if (record.isGuest) {
+    return record.userOrGuestId || "Guest User";
+  }
+
+  const name = normalizeText(record.customerName, "");
+  const id = normalizeText(record.userId || record.customerId, "");
+  if (name && id && id !== "0") {
+    return `${name} (${id})`;
+  }
+
+  return name || (id ? `User #${id}` : "Logged User");
+}
+
+export default function AdminBusSearchHistoryPage() {
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [draftFilters, setDraftFilters] = useState(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [historyRows, setHistoryRows] = useState([]);
+  const [deletedRecordIds, setDeletedRecordIds] = useState([]);
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
+  const [activePage, setActivePage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const loadSearchHistory = useCallback(async (activeFilters) => {
+    setIsLoading(true);
+    setErrorMessage("");
+    setInfoMessage("");
+
+    let apiRows = [];
+    let apiError = "";
+
+    try {
+      apiRows = await listAdminBusSearchHistory({
+        query: activeFilters.query,
+        customerName: activeFilters.customerName,
+        fromDate: activeFilters.fromDate,
+        toDate: activeFilters.toDate,
+        limit: 500,
+      });
+    } catch (error) {
+      apiError = normalizeText(error?.message, "Unable to load bus search history.");
+    }
+
+    const localRows = apiError
+      ? readSearchHistoryEntries({ searchType: "Bus" }).map((record, index) =>
+        mapLocalSearchRecord(record, index)
+      )
+      : [];
+    const mergedRows = mergeSearchHistory(apiRows, localRows);
+    setHistoryRows(mergedRows);
+
+    if (apiError && mergedRows.length > 0) {
+      setInfoMessage("Unable to load live search history. Showing local search history backup.");
+    } else if (apiError) {
+      setErrorMessage(apiError);
+    }
+
+    setIsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadSearchHistory(filters);
+  }, [filters, loadSearchHistory]);
+
+  const location = useLocation();
+  const highlightId = new URLSearchParams(location.search).get("highlightId");
+
+  useEffect(() => {
+    if (highlightId && historyRows.length > 0) {
+      setTimeout(() => {
+        const el = document.getElementById(`row-${highlightId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.style.backgroundColor = "#fef08a";
+          el.style.transition = "background-color 1s ease";
+          setTimeout(() => {
+            el.style.backgroundColor = "transparent";
+          }, 3000);
+        }
+      }, 350);
+    }
+  }, [location.search, highlightId, historyRows]);
+
+  useEffect(() => {
+    setActivePage(1);
+  }, [filters, deletedRecordIds.length]);
+
+  const filteredRows = useMemo(() => {
+    const queryValue = normalizeText(filters.query, "").toLowerCase();
+    const customerNameValue = normalizeText(filters.customerName, "").toLowerCase();
+    const fromDateValue = filters.fromDate ? toDateValue(filters.fromDate) : Number.NaN;
+    const toDateValueMs = filters.toDate
+      ? toDateValue(filters.toDate) + 24 * 60 * 60 * 1000 - 1
+      : Number.NaN;
+    const deletedIdSet = new Set(deletedRecordIds);
+
+    return historyRows.filter((record) => {
+      if (deletedIdSet.has(record.id)) {
+        return false;
+      }
+
+      if (queryValue) {
+        const searchText = `${record.id} ${record.fromCity} ${record.toCity} ${record.customerName} ${record.userOrGuestId}`.toLowerCase();
+        if (!searchText.includes(queryValue)) {
+          return false;
+        }
+      }
+
+      if (customerNameValue) {
+        const customerText = `${record.customerName} ${record.userOrGuestId} ${record.customerId}`.toLowerCase();
+        if (!customerText.includes(customerNameValue)) {
+          return false;
+        }
+      }
+
+      const departValue = toDateValue(record.departDate);
+      if (
+        Number.isFinite(fromDateValue) &&
+        (!Number.isFinite(departValue) || departValue < fromDateValue)
+      ) {
+        return false;
+      }
+
+      if (
+        Number.isFinite(toDateValueMs) &&
+        (!Number.isFinite(departValue) || departValue > toDateValueMs)
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [historyRows, filters, deletedRecordIds]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / itemsPerPage));
+  const safeActivePage = Math.min(activePage, totalPages);
+  const startIndex = (safeActivePage - 1) * itemsPerPage;
+  const pagedRows = filteredRows.slice(startIndex, startIndex + itemsPerPage);
+
+  const applyFilters = () => {
+    setFilters(draftFilters);
+    setIsFiltersOpen(false);
+    setActivePage(1);
+  };
+
+  const clearFilters = () => {
+    setDraftFilters(DEFAULT_FILTERS);
+    setFilters(DEFAULT_FILTERS);
+    setDeletedRecordIds([]);
+    setIsFiltersOpen(false);
+    setActivePage(1);
+  };
+
+  const handleExport = () => {
+    const headers = [
+      "Log ID",
+      "User / Guest ID",
+      "User Type",
+      "User ID",
+      "From City",
+      "To City",
+      "Journey Date",
+      "Search Date (IST)"
+    ];
+    const escapeCsv = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+    const rows = filteredRows.map((record) => [
+      normalizeText(record.id, "--"),
+      normalizeText(record.userOrGuestId, "Guest"),
+      record.isGuest ? "Guest" : "Registered User",
+      normalizeText(record.userId, "--"),
+      normalizeText(record.fromCity, "--"),
+      normalizeText(record.toCity, "--"),
+      formatDepartDate(record.departDate),
+      formatSearchDate(record.searchDateUtc) ? `${formatSearchDate(record.searchDateUtc)}, ${formatSearchTime(record.searchDateUtc)}` : "--",
+    ]);
+
+    const csvBody = [
+      headers.map(escapeCsv).join(","),
+      ...rows.map((row) => row.map(escapeCsv).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([`\uFEFF${csvBody}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "admin-bus-search-history.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDeleteAll = () => {
+    if (!filteredRows.length) {
+      return;
+    }
+
+    if (!window.confirm("Delete all visible search history records?")) {
+      return;
+    }
+
+    clearSearchHistoryEntries({ searchType: "Bus" });
+    setDeletedRecordIds((previous) => [
+      ...previous,
+      ...filteredRows.map((row) => row.id),
+    ]);
+    setInfoMessage("Visible search records removed from this view.");
+  };
+
+  return (
+    <section className="admin-b2c-page admin-search-history-page">
+      <header className="admin-b2c-header admin-search-history-header">
+        <h1 style={{ fontWeight: 600, margin: 0, fontSize: "1.25rem" }}>
+          <span style={{ color: "#A51C49" }}>B2C Bus </span>
+          <span style={{ color: "black" }}>Search List</span>
+        </h1>
+      </header>
+
+      <div className="admin-toolbar-row admin-search-history-toolbar">
+        <div className="admin-chip-row">
+          <span className="admin-chip admin-search-history-chip">
+            Total Records - {filteredRows.length}
+          </span>
+        </div>
+
+        <div className="admin-actions-row">
+          <button type="button" className="admin-search-history-filter-btn" onClick={() => setIsFiltersOpen((current) => !current)}>
+            {isFiltersOpen ? "Close Filter" : "Filter"}
+          </button>
+          <button type="button" className="admin-search-history-export-btn" onClick={handleExport}>
+            Export
+          </button>
+          <button type="button" className="admin-search-history-delete" onClick={handleDeleteAll}>
+            Delete All Records
+          </button>
+        </div>
+      </div>
+
+      {errorMessage ? <div className="admin-data-error">{errorMessage}</div> : null}
+      {infoMessage ? <div className="admin-data-info">{infoMessage}</div> : null}
+
+      {isFiltersOpen ? (
+        <section className="flight-ops-filters admin-ops-filters admin-search-filters">
+          <label>
+            <span>Search Query</span>
+            <input
+              type="text"
+              value={draftFilters.query}
+              onChange={(event) =>
+                setDraftFilters((previous) => ({
+                  ...previous,
+                  query: event.target.value,
+                }))
+              }
+              placeholder="Route, customer or user ID"
+            />
+          </label>
+          <label>
+            <span>Customer / User</span>
+            <input
+              type="text"
+              value={draftFilters.customerName}
+              onChange={(event) =>
+                setDraftFilters((previous) => ({
+                  ...previous,
+                  customerName: event.target.value,
+                }))
+              }
+              placeholder="Enter customer or user ID"
+            />
+          </label>
+          <label>
+            <span>Depart Date From</span>
+            <input
+              type="date"
+              value={draftFilters.fromDate}
+              onChange={(event) =>
+                setDraftFilters((previous) => ({
+                  ...previous,
+                  fromDate: event.target.value,
+                }))
+              }
+            />
+          </label>
+          <label>
+            <span>Depart Date To</span>
+            <input
+              type="date"
+              value={draftFilters.toDate}
+              onChange={(event) =>
+                setDraftFilters((previous) => ({
+                  ...previous,
+                  toDate: event.target.value,
+                }))
+              }
+            />
+          </label>
+
+          <div className="filters-actions">
+            <button type="button" className="primary" onClick={applyFilters}>
+              Apply Filter
+            </button>
+            <button type="button" className="secondary" onClick={clearFilters}>
+              Reset
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      <section className="admin-search-history-table-shell">
+        <header className="admin-search-history-table-head">
+          <span>S.No</span>
+          <span>Search Date (IST)</span>
+          <span>Depart Date</span>
+          <span>Segment</span>
+          <span>Customer / User</span>
+          <span>Action</span>
+        </header>
+
+        {isLoading ? (
+          <div className="admin-search-history-empty">Loading search history...</div>
+        ) : pagedRows.length ? (
+          <div className="admin-search-history-table-body">
+            {pagedRows.map((row, index) => (
+              <article
+                key={`${row.id}-${row.searchDateUtc}-${index}`}
+                id={`row-${row.id || row.searchId || index}`}
+                className="admin-search-history-row"
+                style={{ cursor: "pointer" }}
+                onClick={() => setSelectedRecord(row)}
+              >
+                <div className="admin-search-history-cell admin-cell-centered">
+                  <span style={{ fontWeight: 500, color: "#1e293b" }}>{startIndex + index + 1}</span>
+                </div>
+                <div className="admin-search-history-cell">
+                  <strong style={{ fontWeight: 500, color: "#1e293b" }}>{formatSearchDate(row.searchDateUtc)}</strong>
+                  {row.searchDateUtc ? (
+                    <small style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 400 }}>
+                      {formatSearchTime(row.searchDateUtc)}
+                    </small>
+                  ) : null}
+                </div>
+                <div className="admin-search-history-cell">
+                  <span style={{ fontWeight: 500, color: "#1e293b" }}>{formatDepartDate(row.departDate)}</span>
+                </div>
+                <div className="admin-search-history-cell">
+                  <span style={{ fontWeight: 500, color: "#0f172a" }}>{buildSegmentLabel(row)}</span>
+                </div>
+                <div className="admin-search-history-cell">
+                  <div style={{ display: "flex", flexDirection: "column", gap: "2px", alignItems: "center" }}>
+                    <span
+                      style={{
+                        padding: "1px 6px",
+                        borderRadius: "4px",
+                        fontSize: "0.72rem",
+                        fontWeight: 500,
+                        backgroundColor: row.isGuest ? "#fef3c7" : "#e0f2fe",
+                        color: row.isGuest ? "#92400e" : "#075985",
+                      }}
+                    >
+                      {row.isGuest ? "Guest" : "User"}
+                    </span>
+                    <span style={{ fontWeight: 500, color: "#334155" }}>{row.userOrGuestId || buildCustomerLabel(row)}</span>
+                  </div>
+                </div>
+                <div className="admin-search-history-cell admin-cell-centered">
+                  <button
+                    type="button"
+                    className="admin-search-history-view-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedRecord(row);
+                    }}
+                  >
+                    View
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="admin-search-history-empty">Result Not Found.</div>
+        )}
+
+        {filteredRows.length > 0 && (
+          <AdminPagination
+            currentPage={safeActivePage}
+            totalItems={filteredRows.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setActivePage}
+            onItemsPerPageChange={setItemsPerPage}
+            itemName="search history records"
+          />
+        )}
+      </section>
+
+      {selectedRecord ? (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(15, 23, 42, 0.48)",
+            backdropFilter: "blur(3px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1200,
+            padding: "16px",
+          }}
+          onClick={() => setSelectedRecord(null)}
+        >
+          <article
+            style={{
+              background: "#ffffff",
+              borderRadius: "18px",
+              width: "min(600px, 95vw)",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              padding: "24px",
+              boxShadow: "0 24px 48px rgba(0, 0, 0, 0.2)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "20px",
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e2e8f0", paddingBottom: "14px" }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: "1.28rem", color: "#0f172a", fontWeight: 700 }}>
+                  Bus Search Log Details
+                </h3>
+                <small style={{ color: "#64748b", fontSize: "0.83rem" }}>
+                  Record ID: #{selectedRecord.id}
+                </small>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedRecord(null)}
+                style={{
+                  padding: "6px 16px",
+                  borderRadius: "8px",
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  color: "#334155",
+                  fontSize: "0.83rem",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                Close
+              </button>
+            </header>
+
+            <section style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px" }}>
+              <div>
+                <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Log ID</span>
+                <p style={{ margin: "4px 0 0", fontWeight: 600, color: "#0f172a", fontSize: "0.92rem" }}>#{selectedRecord.id}</p>
+              </div>
+
+              <div>
+                <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>User Type</span>
+                <div style={{ marginTop: "4px" }}>
+                  <span
+                    style={{
+                      padding: "3px 10px",
+                      borderRadius: "6px",
+                      fontSize: "0.78rem",
+                      fontWeight: 600,
+                      backgroundColor: selectedRecord.isGuest ? "#fef3c7" : "#e0f2fe",
+                      color: selectedRecord.isGuest ? "#92400e" : "#075985",
+                    }}
+                  >
+                    {selectedRecord.isGuest ? "Guest User" : "Registered User"}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ gridColumn: "1 / -1" }}>
+                <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>User / Guest ID</span>
+                <p style={{ margin: "4px 0 0", fontWeight: 600, color: "#0f172a", fontSize: "0.9rem", wordBreak: "break-all" }}>
+                  {selectedRecord.userOrGuestId || selectedRecord.userId || "N/A"}
+                </p>
+              </div>
+
+              <div>
+                <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Registered User ID</span>
+                <p style={{ margin: "4px 0 0", fontWeight: 600, color: "#0f172a", fontSize: "0.9rem" }}>
+                  {selectedRecord.userId ? `#${selectedRecord.userId}` : "None (Guest)"}
+                </p>
+              </div>
+
+              <div>
+                <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Search Type</span>
+                <p style={{ margin: "4px 0 0", fontWeight: 600, color: "#0f172a", fontSize: "0.9rem" }}>Bus</p>
+              </div>
+
+              <div>
+                <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Origin City (From)</span>
+                <p style={{ margin: "4px 0 0", fontWeight: 600, color: "#0f172a", fontSize: "0.9rem" }}>{selectedRecord.fromCity || "--"}</p>
+              </div>
+
+              <div>
+                <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Destination City (To)</span>
+                <p style={{ margin: "4px 0 0", fontWeight: 600, color: "#0f172a", fontSize: "0.9rem" }}>{selectedRecord.toCity || "--"}</p>
+              </div>
+
+              <div>
+                <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Route Segment</span>
+                <p style={{ margin: "4px 0 0", fontWeight: 600, color: "#0f172a", fontSize: "0.9rem" }}>{buildSegmentLabel(selectedRecord)}</p>
+              </div>
+
+              <div>
+                <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Journey Date</span>
+                <p style={{ margin: "4px 0 0", fontWeight: 600, color: "#0f172a", fontSize: "0.9rem" }}>{formatDepartDate(selectedRecord.departDate)}</p>
+              </div>
+
+              <div style={{ gridColumn: "1 / -1" }}>
+                <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Search Date & Time (IST)</span>
+                <p style={{ margin: "4px 0 0", fontWeight: 600, color: "#A51C49", fontSize: "0.95rem" }}>
+                  {formatSearchDate(selectedRecord.searchDateUtc)}, {formatSearchTime(selectedRecord.searchDateUtc)}
+                </p>
+              </div>
+
+              <div>
+                <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Data Source</span>
+                <p style={{ margin: "4px 0 0", fontWeight: 600, color: selectedRecord.isLocalFallback ? "#d97706" : "#059669", fontSize: "0.9rem" }}>
+                  {selectedRecord.isLocalFallback ? "Local Backup" : "Live Backend API"}
+                </p>
+              </div>
+            </section>
+
+            {selectedRecord.raw ? (
+              <details style={{ borderTop: "1px solid #e2e8f0", paddingTop: "12px", marginTop: "4px" }}>
+                <summary style={{ cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, color: "#64748b" }}>
+                  View Raw API Response JSON
+                </summary>
+                <pre
+                  style={{
+                    margin: "10px 0 0",
+                    padding: "12px",
+                    background: "#0f172a",
+                    color: "#38bdf8",
+                    borderRadius: "8px",
+                    fontSize: "0.76rem",
+                    overflowX: "auto",
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-all",
+                  }}
+                >
+                  {JSON.stringify(selectedRecord.raw, null, 2)}
+                </pre>
+              </details>
+            ) : null}
+          </article>
+        </div>
+      ) : null}
+    </section>
+  );
+}

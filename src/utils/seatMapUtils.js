@@ -1,0 +1,173 @@
+export const SEAT_STATUS = {
+  AVAILABLE: "available",
+  BOOKED: "booked",
+  SELECTED: "selected",
+  RESERVED: "reserved",
+  UNAVAILABLE: "unavailable",
+  BLOCKED: "blocked",
+};
+
+export const SEAT_TYPES = {
+  STANDARD: "standard",
+  BUSINESS: "business",
+  PREMIUM: "premium",
+  EXIT_ROW: "exitRow",
+};
+
+export const CABIN_ZONES = [
+  { key: "business", label: "Business Class", rows: [1, 2], type: SEAT_TYPES.BUSINESS },
+  { key: "premium", label: "Premium Economy", rows: [3, 4, 5, 6, 7], type: SEAT_TYPES.PREMIUM },
+  { key: "economy", label: "Economy", rows: Array.from({ length: 23 }, (_, index) => index + 8), type: SEAT_TYPES.STANDARD },
+];
+
+export const SEAT_PRICE_BY_TYPE = {
+  [SEAT_TYPES.STANDARD]: 0,
+  [SEAT_TYPES.BUSINESS]: 1200,
+  [SEAT_TYPES.PREMIUM]: 350,
+  [SEAT_TYPES.EXIT_ROW]: 700,
+};
+
+export function extractAllSeatObjects(obj, depth = 0, parentContext = {}) {
+  if (!obj || depth > 25) return [];
+  let seats = [];
+
+  let currentContext = { ...parentContext };
+  if (typeof obj === "object" && !Array.isArray(obj)) {
+    if (obj.AirlineCode) currentContext.AirlineCode = obj.AirlineCode;
+    if (obj.FlightNumber || obj.AirlineNumber) currentContext.FlightNumber = obj.FlightNumber || obj.AirlineNumber;
+    if (obj.Origin || obj.FromAirportCode) currentContext.Origin = obj.Origin || obj.FromAirportCode;
+    if (obj.Destination || obj.ToAirportCode) currentContext.Destination = obj.Destination || obj.ToAirportCode;
+    // Propagate cabin class context so each seat knows which cabin it belongs to
+    if (obj.CabinClass !== undefined) currentContext.CabinClass = obj.CabinClass;
+    if (obj.CabinClassName) currentContext.CabinClassName = obj.CabinClassName;
+    if (obj.CabinCode) currentContext.CabinCode = obj.CabinCode;
+  }
+
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      seats.push(...extractAllSeatObjects(item, depth + 1, currentContext));
+    }
+  } else if (typeof obj === "object") {
+    if (obj.Code || obj.SeatNo || obj.SeatNumber || obj.Number || (obj.RowNo && obj.Column)) {
+      seats.push({
+        ...currentContext,
+        ...obj,
+      });
+    } else {
+      for (const key of Object.keys(obj)) {
+        if (obj[key] && typeof obj[key] === "object") {
+          seats.push(...extractAllSeatObjects(obj[key], depth + 1, currentContext));
+        }
+      }
+    }
+  }
+  return seats;
+}
+
+/**
+ * Normalise a cabin class string to a canonical key for comparison.
+ * Returns "economy", "premiumeconomy", "business", or "first".
+ */
+export function normalizeCabinClass(str) {
+  const s = String(str || "").toLowerCase().replace(/\s+/g, "");
+  if (s.includes("business")) return "business";
+  if (s.includes("first")) return "first";
+  if (s.includes("premium")) return "premiumeconomy";
+  if (s === "2" || s.includes("economy")) return "economy";
+  // SRDV numeric codes: 1=All, 2=Economy, 3=PremiumEconomy, 4=Business, 5=First
+  if (s === "4") return "business";
+  if (s === "5") return "first";
+  if (s === "3") return "premiumeconomy";
+  return "economy"; // default
+}
+
+export function parseSrdvSeatMap(srdvData, seedSelectedLabels = []) {
+  if (!srdvData) return [];
+  const selectedLookup = new Set(seedSelectedLabels);
+
+  const rawSeats = extractAllSeatObjects(srdvData);
+  if (rawSeats.length === 0) return [];
+
+  const seenMap = new Map();
+
+  rawSeats.forEach((s) => {
+    const rawCode = String(s.Code || "");
+    if (!rawCode) return;
+    let cleanSeatNo = String(s.SeatNumber || s.SeatNo || rawCode).split("SeKey")[0].split("_")[0].trim();
+
+    // Extract standard seat format (e.g. 1A, 12C, 24F)
+    const match = cleanSeatNo.match(/^(\d{1,3}[A-Z])$/i);
+    if (match) {
+      cleanSeatNo = match[1].toUpperCase();
+    }
+    if (!cleanSeatNo || cleanSeatNo.length > 5) {
+      return;
+    }
+
+    const seatNumber = cleanSeatNo;
+    const flightContext = String(s.FlightNumber || s.Origin || "").trim();
+    const uniqueKey = `${flightContext}_${seatNumber}`;
+    if (seenMap.has(uniqueKey)) return;
+
+    let row = Number(s.RowNo || s.Row || seatNumber.replace(/\D/g, "") || 1);
+    let seatLetter = String(s.Column || s.SeatLetter || seatNumber.replace(/\d/g, "") || "A").toUpperCase();
+    if (seatLetter.length > 1) {
+      seatLetter = seatLetter[0];
+    }
+
+    // Allow null/undefined price — treat as 0 (free seat). Only skip seats with explicitly negative price.
+    const rawPrice = s.Price ?? s.Amount ?? s.Fee ?? s.ChargeAmount ?? s.Charge ?? s.SeatCharge ?? null;
+    const price = rawPrice !== null ? Number(rawPrice) : 0;
+    if (price < 0) return; // explicitly skip negative-priced seats (data error)
+
+    const isBooked = Boolean(s.AvailablityType === 0 || s.IsBooked === true || s.IsAvailable === false || s.Status === "Booked" || s.Status === 0);
+    const isBlocked = Boolean(s.Status === "Blocked" || s.Status === 2);
+
+    let status = SEAT_STATUS.AVAILABLE;
+    if (isBlocked) status = SEAT_STATUS.BLOCKED;
+    else if (isBooked) status = SEAT_STATUS.BOOKED;
+    else if (selectedLookup.has(seatNumber)) status = SEAT_STATUS.SELECTED;
+
+    const isExit = Boolean(s.IsExitRow === true || s.IsLegroom === true || s.isExitRow === true || s.isLegroom === true);
+    const type = isExit
+      ? SEAT_TYPES.EXIT_ROW
+      : price > 800
+        ? SEAT_TYPES.BUSINESS
+        : price > 300
+          ? SEAT_TYPES.PREMIUM
+          : SEAT_TYPES.STANDARD;
+
+    // Cabin class this seat belongs to (propagated from parent context)
+    const cabinClass = s.CabinClass ?? s.cabinClass ?? null;
+    const cabinClassName = s.CabinClassName || s.cabinClassName || "";
+
+    seenMap.set(uniqueKey, {
+      id: uniqueKey,
+      seatNumber,
+      label: seatNumber,
+      code: rawCode,
+      rawCode,
+      rawSeat: s,
+      row,
+      seatLetter,
+      price,
+      isFree: price === 0,
+      status,
+      type,
+      isExit,
+      cabinClass,
+      cabinClassName,
+      isWindow: ["A", "F"].includes(seatLetter),
+      isAisle: ["C", "D"].includes(seatLetter),
+      features: {
+        extraLegroom: isExit,
+      },
+    });
+  });
+
+  return Array.from(seenMap.values());
+}
+
+export function formatCurrency(value) {
+  return `₹${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Math.round(Number(value) || 0))}`;
+}

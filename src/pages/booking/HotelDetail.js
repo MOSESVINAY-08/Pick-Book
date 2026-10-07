@@ -1,0 +1,1119 @@
+/* eslint-disable */
+import React, { useEffect, useState } from "react";
+import { BedDouble, ShieldCheck, Loader2, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { categorizeFacilities } from "../../utils/facilityCategories";
+import { getAmenityIcon, getAmenityName } from "../../utils/amenityIconMap";
+import RoomCategoryAccordion from "../../components/booking/RoomCategoryAccordion";
+
+const getViewSymbol = (name) => {
+  const lower = name.toLowerCase();
+  if (lower.includes("skyline") || lower.includes("city")) return "🏙️";
+  if (lower.includes("garden") || lower.includes("lawn") || lower.includes("green") || lower.includes("park")) return "🏡";
+  if (lower.includes("terrace") || lower.includes("roof") || lower.includes("landmark")) return "🌅";
+  if (lower.includes("balcony") || lower.includes("patio")) return "🚪";
+  return "👁️";
+};
+
+const getDiningSymbol = (name) => {
+  const lower = name.toLowerCase();
+  if (lower.includes("breakfast") || lower.includes("egg")) return "🍳";
+  if (lower.includes("coffee") || lower.includes("tea") || lower.includes("cafe")) return "☕";
+  if (lower.includes("restaurant") || lower.includes("dining")) return "🍽️";
+  if (lower.includes("bar") || lower.includes("lounge") || lower.includes("drink")) return "🍹";
+  return "🍴";
+};
+
+const getAttractionSymbol = (name) => {
+  const lower = name.toLowerCase();
+  if (lower.includes("airport") || lower.includes("flight")) return "✈️";
+  if (lower.includes("metro") || lower.includes("subway") || lower.includes("train") || lower.includes("railway") || lower.includes("station")) return "🚇";
+  if (lower.includes("beach") || lower.includes("lake") || lower.includes("sea") || lower.includes("pool")) return "🏖️";
+  if (lower.includes("temple") || lower.includes("church") || lower.includes("mosque")) return "⛩️";
+  if (lower.includes("mall") || lower.includes("shop") || lower.includes("market")) return "🛍️";
+  return "📍";
+};
+
+const getGeneralSymbol = (name) => {
+  const lower = name.toLowerCase();
+  if (lower.includes("wi-fi") || lower.includes("internet") || lower.includes("wifi")) return "📶";
+  if (lower.includes("air condition") || lower.includes("ac") || lower.includes("cooling")) return "❄️";
+  if (lower.includes("pool") || lower.includes("swim")) return "🏊";
+  if (lower.includes("gym") || lower.includes("fitness") || lower.includes("exercise")) return "🏋️";
+  if (lower.includes("parking") || lower.includes("car")) return "🅿️";
+  if (lower.includes("service") || lower.includes("bell") || lower.includes("desk") || lower.includes("reception")) return "🛎️";
+  return "✓";
+};
+
+export default function HotelDetail({
+  hotel,
+  offer,
+  roomsCount,
+  selectedMultiRooms,
+  selectingOfferId,
+  handleSelectOffer,
+  formatCurrency,
+  formatNightLabel,
+  toDisplayDate,
+  checkInDate,
+  checkOutDate,
+  guestSummary,
+  basePrice,
+  tax,
+  finalPayable,
+  convenienceFee,
+  setCurrentStep,
+  gallery,
+  activeImageTab,
+  setActiveImageTab,
+  displayedImages,
+  stayLocation,
+  stayFacts,
+  stayHighlights,
+  visuals,
+  nights
+}) {
+  const [lightboxIndex, setLightboxIndex] = useState(null);
+  const [openDescIndex, setOpenDescIndex] = useState(-1);
+  const [showAllDesc, setShowAllDesc] = useState(false);
+  const [showAllPolicies, setShowAllPolicies] = useState(false);
+  const [listModal, setListModal] = useState(null); // { title: string, items: any[], type: "amenity" | "dining" | "attraction" }
+  
+  const AMENITY_PREVIEW_COUNT = 10;
+  const DINING_PREVIEW_COUNT = 6;
+  const ATTRACTION_PREVIEW_COUNT = 5;
+  const POLICY_PREVIEW_COUNT = 2;
+
+  const [savedStayIds, setSavedStayIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem("savedStayIds");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const hotelId = hotel.id || hotel.code;
+  const isFavourite = savedStayIds.includes(hotelId);
+
+  const toggleFavourite = () => {
+    setSavedStayIds((current) => {
+      const next = current.includes(hotelId)
+        ? current.filter(id => id !== hotelId)
+        : [...current, hotelId];
+      localStorage.setItem("savedStayIds", JSON.stringify(next));
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (lightboxIndex === null) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setLightboxIndex(null);
+      if (event.key === "ArrowRight") {
+        setLightboxIndex((current) => (current + 1) % displayedImages.length);
+      }
+      if (event.key === "ArrowLeft") {
+        setLightboxIndex((current) => (current - 1 + displayedImages.length) % displayedImages.length);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [lightboxIndex, displayedImages.length]);
+
+  const rawAmenities = Array.isArray(hotel.amenities)
+    ? hotel.amenities
+    : (typeof hotel.amenities === "string" ? hotel.amenities.split(",").map(a => a.trim()) : []);
+
+  const amenities = rawAmenities
+    .map((item) => {
+      if (!item) return "";
+      if (typeof item === "object" && item !== null) {
+        return String(item.name || item.Name || item.title || "").trim();
+      }
+      const s = String(item).trim();
+      return s === "[object Object]" ? "" : s;
+    })
+    .filter(Boolean);
+
+  // Parse amenities dynamically based on static mapping
+  const categorized = categorizeFacilities(amenities);
+  const views = categorized.views || [];
+  const dining = categorized.dining || [];
+  const general = [...(categorized.amenities || []), ...(categorized.safety || [])];
+  
+  // Only use real attractions array from API
+  let rawAttractions = Array.isArray(hotel.attractions) 
+    ? hotel.attractions.map(a => typeof a === "object" ? (a.name || a.Name || "") : String(a)).filter(Boolean)
+    : [];
+
+  let parsedAttractions = [];
+  rawAttractions.forEach(item => {
+    let cleaned = item.replace("Distances are displayed to the nearest 0.1 mile and kilometer.", "").trim();
+    if (cleaned.includes(" km") && cleaned.includes(" - ")) {
+      const regex = /(.*?)\s+-\s+(\d+(?:\.\d+)?\s*km(?:\s*\/\s*\d+(?:\.\d+)?\s*mi)?)/g;
+      let match;
+      let foundAny = false;
+      while ((match = regex.exec(cleaned)) !== null) {
+        foundAny = true;
+        parsedAttractions.push({ name: match[1].trim(), distance: match[2].trim() });
+      }
+      if (!foundAny) {
+        parsedAttractions.push({ name: item, distance: "" });
+      }
+    } else {
+      parsedAttractions.push({ name: item, distance: "" });
+    }
+  });
+
+  const attractions = parsedAttractions;
+
+  // Dynamically filter tab buttons based on available categories
+  const tabsList = ["All"];
+  if (hotel.offers && hotel.offers.length > 0) tabsList.push("Rooms");
+  if (views.length > 0) tabsList.push("Property Views");
+  if (general.length > 0) tabsList.push("Facilities");
+  if (dining.length > 0) tabsList.push("Dining");
+  if (attractions.length > 0) tabsList.push("Nearby Attractions");
+
+  const scrollToSection = (sectionId) => {
+    if (sectionId === "All") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    const element = document.getElementById(`section-${sectionId.toLowerCase().replace(/\s+/g, "-")}`);
+    if (element) {
+      // Measure the actual sticky topbar height dynamically
+      const topbar = document.querySelector("header, nav, .topbar, [class*='topbar'], [class*='header'], [class*='navbar']");
+      const offset = topbar ? topbar.getBoundingClientRect().height + 12 : 72;
+      const elementTop = element.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top: elementTop, behavior: "smooth" });
+    }
+  };
+
+  const uniqueDescriptions = [];
+  const seenTexts = new Set();
+  
+  if (Array.isArray(hotel.description)) {
+    hotel.description.forEach(descGroup => {
+      // Filter out descriptions named "Default", "Attractions", or that contain raw JSON strings
+      if (descGroup.name === "Default" || descGroup.name === "Attractions") return;
+
+      let textContent = "";
+      if (Array.isArray(descGroup.detail)) {
+        textContent = descGroup.detail.join(" ").trim();
+      } else {
+        textContent = String(descGroup.detail || "").trim();
+      }
+      
+      // Also skip if it looks like raw JSON
+      if (textContent.startsWith("{") && textContent.endsWith("}")) return;
+      
+      // Basic normalization to ignore minor whitespace differences
+      const normalizedText = textContent.toLowerCase().replace(/\s+/g, ' ');
+      
+      if (normalizedText && !seenTexts.has(normalizedText)) {
+        seenTexts.add(normalizedText);
+        uniqueDescriptions.push(descGroup);
+      }
+    });
+  }
+
+  return (
+    <>
+      {/* Category Image Tabs */}
+      <div className="hotel-category-tabs" style={{ padding: "4px 8px", marginBottom: "4px", gap: "8px" }}>
+        {tabsList.map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            className={`hotel-category-tab-btn${activeImageTab === tab ? " is-active" : ""}`}
+            style={{ fontSize: "0.78rem", padding: "4px 10px", minHeight: "28px" }}
+            onClick={() => {
+              setActiveImageTab(tab);
+              scrollToSection(tab);
+            }}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* Top Header: Title, Stars & Actions */}
+      <section style={{ marginBottom: "10px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px" }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "6px" }}>
+            <h1 style={{ fontSize: "1.65rem", fontWeight: 700, color: "var(--hotel-ink)", margin: 0, lineHeight: "1.2" }}>
+              {hotel.name}
+            </h1>
+            {hotel.rating > 0 && (
+              <span style={{ color: "#ffb000", fontSize: "1.1rem" }}>
+                {"★".repeat(Math.floor(hotel.rating))}
+              </span>
+            )}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.85rem", color: "var(--hotel-ink)", flexWrap: "wrap" }}>
+            <span style={{ color: "#ff0000" }}>📍</span>
+            <span>{stayLocation}</span>
+            <a href="#section-map" onClick={(e) => { e.preventDefault(); const el = document.getElementById("section-map"); if(el) el.scrollIntoView({behavior: "smooth"}); }} style={{ color: "#ff0000", textDecoration: "none", fontWeight: 600, marginLeft: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
+              <img src="/location-pin.png" alt="Location" style={{ width: "18px", height: "18px", objectFit: "contain" }} /> Show in map
+            </a>
+          </div>
+        </div>
+        
+        <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+          <button 
+            onClick={toggleFavourite}
+            style={{ background: "none", border: "none", color: "#ff0000", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", transition: "opacity 0.2s" }} 
+            onMouseOver={e=>e.currentTarget.style.opacity=0.7} 
+            onMouseOut={e=>e.currentTarget.style.opacity=1}
+          >
+            <span style={{ fontSize: "1.2rem", color: "#ff0000" }}>{isFavourite ? "♥" : "♡"}</span> {isFavourite ? "Added to Favourites" : "Add to Favourites"}
+          </button>
+          <button 
+            onClick={() => {
+              if (navigator.share) {
+                navigator.share({ title: hotel.name, url: window.location.href }).catch(console.error);
+              } else {
+                navigator.clipboard.writeText(window.location.href);
+                alert("Link copied to clipboard!");
+              }
+            }}
+            style={{ background: "none", border: "none", color: "#ff0000", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", transition: "opacity 0.2s" }} 
+            onMouseOver={e=>e.currentTarget.style.opacity=0.7} 
+            onMouseOut={e=>e.currentTarget.style.opacity=1}
+          >
+            <span style={{ fontSize: "1.2rem" }}>➦</span> Share
+          </button>
+        </div>
+      </section>
+
+      {/* Embedded CSS for Gallery */}
+      <style>{`
+        .hotel-gallery-grid {
+          display: grid;
+          grid-template-columns: ${hotel.offers && hotel.offers.length > 0 ? "minmax(0, 2fr) minmax(0, 1fr) 340px" : "minmax(0, 2fr) minmax(0, 1fr)"};
+          gap: 12px;
+          height: clamp(390px, 30vw, 410px);
+          min-height: 390px;
+          max-height: 410px;
+          grid-template-rows: minmax(0, 1fr);
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          box-sizing: border-box;
+          margin-bottom: 12px;
+          position: relative;
+        }
+        .hotel-gallery-grid > div {
+          min-height: 0;
+          min-width: 0;
+          height: 100%;
+        }
+        @media (max-width: 900px) {
+          .hotel-gallery-grid {
+            grid-template-columns: 1fr;
+            height: auto;
+            min-height: 0;
+            max-height: none;
+            grid-template-rows: none;
+            grid-auto-rows: auto;
+            overflow: visible;
+            align-items: start;
+            margin-bottom: 12px;
+          }
+          .hotel-gallery-middle {
+            display: none !important;
+          }
+          .hotel-gallery-main-wrapper {
+            height: 300px !important;
+          }
+          .hotel-deal-card {
+            height: max-content !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+            display: flex !important;
+            flex-direction: column !important;
+          }
+        }
+        
+        .hotel-gallery-btn {
+          width: 100%;
+          height: 100%;
+          padding: 0;
+          border: 0;
+          cursor: pointer;
+          position: relative;
+          overflow: hidden;
+          border-radius: 12px;
+          display: block;
+          background: #e2e8f0;
+        }
+        .hotel-gallery-btn img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: center;
+          transition: transform 0.4s ease;
+          display: block;
+        }
+        .hotel-gallery-btn img:hover {
+          transform: scale(1.03);
+        }
+        .hotel-gallery-btn::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: rgba(0,0,0,0);
+          transition: background 0.3s ease;
+          border-radius: 12px;
+          pointer-events: none;
+        }
+        .hotel-gallery-btn:hover::after {
+          background: rgba(0,0,0,0.05);
+        }
+
+        .hotel-deal-card {
+          height: 100% !important;
+          align-self: stretch;
+          min-height: 0;
+          min-width: 0 !important;
+          overflow: hidden !important;
+          gap: 0 !important;
+        }
+
+        .hotel-deal-card button {
+          min-width: 0;
+        }
+
+        .hotel-deal-content {
+          min-width: 0;
+          padding-left: 12px !important;
+          padding-right: 12px !important;
+        }
+
+        .hotel-deal-title {
+          display: -webkit-box;
+          overflow: hidden;
+          min-width: 0;
+          max-width: 100%;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 2;
+          overflow-wrap: anywhere;
+          font-size: 1.1rem !important;
+          margin-bottom: 4px !important;
+        }
+
+        .hotel-deal-amenities {
+          min-width: 0;
+          max-width: 100%;
+          gap: 4px !important;
+          margin-bottom: 6px !important;
+        }
+
+        .hotel-deal-amenities > div,
+        .hotel-deal-amenities > button {
+          padding: 3px 6px !important;
+          font-size: 0.68rem !important;
+        }
+
+        .hotel-deal-price-actions {
+          padding: 0 12px 10px !important;
+        }
+
+        .hotel-deal-price-actions > div {
+          padding-top: 8px !important;
+        }
+
+        .hotel-deal-price-actions p {
+          margin-bottom: 8px !important;
+        }
+
+        .hotel-deal-actions {
+          min-width: 0;
+        }
+
+        .hotel-deal-actions > button {
+          min-width: 0;
+          max-width: 100%;
+          padding-left: 3px !important;
+          padding-right: 3px !important;
+        }
+
+        .hotel-deal-card > div:first-child {
+          overflow: hidden;
+          border-radius: 16px 16px 0 0;
+        }
+
+        @media (max-width: 900px) {
+          .hotel-gallery-grid > .hotel-deal-card {
+            height: auto !important;
+            min-height: 0 !important;
+            align-self: start !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
+          }
+
+          .hotel-deal-card > .hotel-deal-content {
+            flex: 0 0 auto !important;
+            width: 100%;
+          }
+
+          .hotel-deal-content > div {
+            flex: 0 0 auto !important;
+          }
+
+          .hotel-deal-content > div:last-child {
+            margin-top: 0 !important;
+            padding-bottom: 0 !important;
+          }
+
+          .hotel-deal-title {
+            font-size: 1.1rem !important;
+            line-height: 1.15 !important;
+          }
+
+          .hotel-deal-actions {
+            width: 100%;
+          }
+
+          .hotel-deal-actions > button {
+            flex: 1 1 0;
+            overflow-wrap: anywhere;
+          }
+        }
+      `}</style>
+
+      {/* Immersive Image Gallery (3 columns) */}
+      <section className="hotel-gallery-grid">
+        {/* Main Image (Left) */}
+        {displayedImages.length > 0 && (
+          <div className="hotel-gallery-main-wrapper" style={{ height: "100%", position: "relative" }}>
+            <button type="button" onClick={() => setLightboxIndex(0)} className="hotel-gallery-btn">
+              <img src={displayedImages[0]} alt={hotel.name} />
+            </button>
+          </div>
+        )}
+        
+        {/* 2 Stacked Images (Middle) */}
+        {displayedImages.length > 1 && (
+          <div className="hotel-gallery-middle" style={{ display: "grid", gridTemplateRows: "1fr 1fr", gap: "12px", height: "100%", minHeight: 0 }}>
+            {displayedImages.slice(1, 3).map((imgUrl, index) => {
+              const actualIndex = index + 1;
+              const isLast = index === 1;
+              const remainingCount = displayedImages.length - 3;
+              
+              return (
+                <button key={actualIndex} type="button" onClick={() => setLightboxIndex(isLast ? 0 : actualIndex)} className="hotel-gallery-btn" style={{ minHeight: 0 }}>
+                  <img src={imgUrl} alt={`${hotel.name} - ${actualIndex + 1}`} />
+                  
+                  {isLast && remainingCount > 0 && (
+                    <div style={{ 
+                      position: "absolute", 
+                      inset: 0, 
+                      background: "rgba(0,0,0,0.45)", 
+                      color: "#fff", 
+                      display: "flex", 
+                      alignItems: "center", 
+                      justifyContent: "center", 
+                      fontSize: "1.15rem", 
+                      fontWeight: 700,
+                      backdropFilter: "blur(2px)",
+                      transition: "background 0.3s ease"
+                    }}
+                    onMouseOver={e=>e.currentTarget.style.background="rgba(0,0,0,0.55)"}
+                    onMouseOut={e=>e.currentTarget.style.background="rgba(0,0,0,0.45)"}
+                    >
+                      +{remainingCount} Photos
+                    </div>
+                  )}
+                  {isLast && remainingCount <= 0 && (
+                     <div style={{ 
+                      position: "absolute", 
+                      inset: 0, 
+                      background: "rgba(0,0,0,0.45)", 
+                      color: "#fff", 
+                      display: "flex", 
+                      alignItems: "center", 
+                      justifyContent: "center", 
+                      fontSize: "1.05rem", 
+                      fontWeight: 700,
+                      backdropFilter: "blur(2px)",
+                      transition: "background 0.3s ease"
+                    }}
+                    onMouseOver={e=>e.currentTarget.style.background="rgba(0,0,0,0.55)"}
+                    onMouseOut={e=>e.currentTarget.style.background="rgba(0,0,0,0.45)"}
+                    >
+                      See All Photos
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Recommended Deal Card (Right) */}
+        {hotel.offers && hotel.offers.length > 0 && (
+          <div className="hotel-deal-card" style={{ 
+            border: "1px solid rgba(226, 232, 240, 0.8)", 
+            borderRadius: "16px", 
+            display: "flex", 
+            flexDirection: "column", 
+            background: "linear-gradient(165deg, #ffffff 0%, #f8fafc 100%)", 
+            boxShadow: "0 10px 30px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,1)", 
+            overflow: "hidden",
+            position: "relative",
+            transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+          }}
+          onMouseOver={e => {
+            e.currentTarget.style.transform = "translateY(-4px)";
+            e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,1)";
+          }}
+          onMouseOut={e => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,1)";
+          }}
+          >
+            {/* Top image thumbnail */}
+            <div style={{ height: "140px", width: "100%", position: "relative", flexShrink: 0, marginBottom: "0" }}>
+              <img src={hotel.offers[0].images?.[0] || gallery[0] || displayedImages[0]} alt="Room thumbnail" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(15, 23, 42, 0.4) 0%, transparent 100%)" }} />
+              <div style={{ position: "absolute", bottom: "12px", left: "14px" }}>
+                <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#1e3a8a", background: "rgba(255, 255, 255, 0.95)", padding: "4px 10px", borderRadius: "20px", boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)", letterSpacing: "0.02em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "4px" }}>
+                  <span style={{ color: "#eab308", fontSize: "0.85rem", lineHeight: 1 }}>{"★".repeat(hotel.rating ? Math.floor(hotel.rating) : 4)}</span> Recommended Deal
+                </span>
+              </div>
+            </div>
+            
+            <div className="hotel-deal-content" style={{ padding: "0 16px", display: "flex", flexDirection: "column", flexGrow: 1 }}>
+              <h3 className="hotel-deal-title" style={{ fontSize: "1.2rem", fontWeight: 800, margin: "0 0 8px 0", color: "#0f172a", lineHeight: "1.2", flexShrink: 0, letterSpacing: "-0.01em" }}>
+                {hotel.offers[0].roomCategory ? hotel.offers[0].roomCategory.replace(/_/g, " ") : "Standard Room"}
+              </h3>
+            
+            {/* Amenities (Chips) */}
+            <div 
+              className="hotel-deal-amenities"
+              style={{ 
+                display: "flex", 
+                flexWrap: "wrap",
+                gap: "6px",
+                marginBottom: "10px"
+              }}
+            >
+              <div style={{ fontSize: "0.72rem", padding: "4px 8px", background: hotel.offers[0].cancellationPolicy?.includes("Charge") ? "#fef2f2" : "#f0fdf4", color: hotel.offers[0].cancellationPolicy?.includes("Charge") ? "#b91c1c" : "#15803d", borderRadius: "6px", border: `1px solid ${hotel.offers[0].cancellationPolicy?.includes("Charge") ? "#fecaca" : "#bbf7d0"}`, display: "flex", alignItems: "center", gap: "4px" }}>
+                <span style={{ fontSize: "0.8rem", lineHeight: "1" }}>{hotel.offers[0].cancellationPolicy?.includes("Charge") ? "⊗" : "✓"}</span> 
+                <span style={{ fontWeight: 600 }}>{hotel.offers[0].cancellationPolicy?.includes("Charge") ? "Non-refundable" : "Free Cancellation"}</span>
+              </div>
+              
+              {hotel.offers[0].amenities && hotel.offers[0].amenities.slice(0, 2).map((a, i) => {
+                const amenityName = getAmenityName(a);
+                if (!amenityName) return null;
+                const { icon, color } = getAmenityIcon(a);
+                return (
+                  <div key={i} style={{ fontSize: "0.72rem", padding: "4px 8px", background: "#f8fafc", color: "#334155", borderRadius: "6px", border: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <i className={icon} style={{ fontSize: "0.85rem", color }}></i>
+                    <span style={{ fontWeight: 600 }}>{amenityName}</span>
+                  </div>
+                );
+              })}
+
+              {hotel.offers[0].amenities && hotel.offers[0].amenities.length > 2 && (
+                <button
+                  type="button"
+                  onClick={() => scrollToSection("Rooms")}
+                  style={{ fontSize: "0.72rem", padding: "4px 8px", background: "#f1f5f9", color: "#64748b", borderRadius: "6px", border: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", transition: "background 0.2s" }}
+                  onMouseOver={e => e.currentTarget.style.background = "#e2e8f0"}
+                  onMouseOut={e => e.currentTarget.style.background = "#f1f5f9"}
+                >
+                  <span style={{ fontWeight: 600 }}>+{hotel.offers[0].amenities.length - 2} more</span>
+                </button>
+              )}
+            </div>
+            
+            {/* Price and Buttons (fixed at bottom) */}
+            <div className="hotel-deal-price-actions" style={{ padding: "0 16px 16px 16px", marginTop: "auto" }}>
+              <div style={{ paddingTop: "14px", borderTop: "1px dashed rgba(15, 23, 42, 0.1)", display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginBottom: "2px" }}>
+                  <strong style={{ fontSize: "1.45rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.02em" }}>
+                    {formatCurrency(hotel.offers[0].price)}
+                  </strong>
+                  {Number(hotel.offers[0].originalPrice) > 0 && (
+                    <span style={{ fontSize: "0.85rem", color: "#94a3b8", textDecoration: "line-through", fontWeight: 500 }}>
+                      {formatCurrency(hotel.offers[0].originalPrice)}
+                    </span>
+                  )}
+                </div>
+                <p style={{ fontSize: "0.7rem", color: "#64748b", margin: "0 0 14px 0", fontWeight: 500 }}>
+                  + taxes & fees, per night for 1 room
+                </p>
+                
+                <div className="hotel-deal-actions" style={{ display: "flex", gap: "10px" }}>
+                  <button 
+                    type="button" 
+                    onClick={() => { handleSelectOffer(hotel.offers[0]); setCurrentStep(2); }}
+                    style={{ flex: 1, background: "linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)", color: "#fff", border: "none", padding: "12px 4px", borderRadius: "10px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)", boxShadow: "0 4px 12px rgba(225, 29, 72, 0.25)" }}
+                    onMouseOver={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 6px 16px rgba(225, 29, 72, 0.35)"; }}
+                    onMouseOut={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(225, 29, 72, 0.25)"; }}
+                  >
+                    Reserve 1 Room
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => scrollToSection("Rooms")}
+                    style={{ flex: 1, background: "rgba(255,255,255,0.9)", color: "#e11d48", border: "1.5px solid #fecdd3", padding: "12px 4px", borderRadius: "10px", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)" }}
+                    onMouseOver={(e) => { e.currentTarget.style.background = "#fff1f2"; e.currentTarget.style.borderColor = "#fda4af"; }}
+                    onMouseOut={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.9)"; e.currentTarget.style.borderColor = "#fecdd3"; }}
+                  >
+                    View All Rooms
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        )}
+      </section>
+
+      {lightboxIndex !== null && displayedImages.length > 0 && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${hotel.name} photo gallery`}
+          onClick={() => setLightboxIndex(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 3000, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(10, 15, 30, 0.95)", backdropFilter: "blur(6px)" }}
+        >
+          {/* Close */}
+          <button type="button" onClick={() => setLightboxIndex(null)} aria-label="Close gallery" style={{ position: "absolute", top: "20px", right: "24px", border: 0, background: "rgba(255,255,255,0.12)", color: "#fff", borderRadius: "50%", width: "44px", height: "44px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(4px)", zIndex: 10 }}>
+            <X size={22} strokeWidth={2.5} />
+          </button>
+
+          {/* Prev */}
+          <button type="button" onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex - 1 + displayedImages.length) % displayedImages.length); }} aria-label="Previous image" style={{ position: "absolute", left: "20px", border: 0, background: "rgba(255,255,255,0.12)", color: "#fff", borderRadius: "50%", width: "52px", height: "52px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(4px)", zIndex: 10 }}>
+            <ChevronLeft size={28} strokeWidth={2.5} />
+          </button>
+
+          {/* Fixed-size image frame — same size for every image */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "min(88vw, 960px)", height: "72vh", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "14px", overflow: "hidden", background: "#0f172a", boxShadow: "0 32px 80px rgba(0,0,0,0.6)", flexShrink: 0 }}
+          >
+            <img
+              src={displayedImages[lightboxIndex]}
+              alt={`${hotel.name} - ${lightboxIndex + 1}`}
+              style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center", display: "block" }}
+            />
+          </div>
+
+          {/* Next */}
+          <button type="button" onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex + 1) % displayedImages.length); }} aria-label="Next image" style={{ position: "absolute", right: "20px", border: 0, background: "rgba(255,255,255,0.12)", color: "#fff", borderRadius: "50%", width: "52px", height: "52px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(4px)", zIndex: 10 }}>
+            <ChevronRight size={28} strokeWidth={2.5} />
+          </button>
+
+          {/* Counter + thumbnails strip */}
+          <div onClick={(e) => e.stopPropagation()} style={{ marginTop: "14px", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
+            <span style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.85rem", fontWeight: 500 }}>{lightboxIndex + 1} / {displayedImages.length}</span>
+            <div style={{ display: "flex", gap: "6px", maxWidth: "min(88vw, 960px)", overflowX: "auto", padding: "0 4px" }}>
+              {displayedImages.map((img, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setLightboxIndex(idx)}
+                  style={{ flexShrink: 0, width: "54px", height: "38px", border: idx === lightboxIndex ? "2px solid #fff" : "2px solid transparent", borderRadius: "6px", overflow: "hidden", cursor: "pointer", padding: 0, opacity: idx === lightboxIndex ? 1 : 0.55, transition: "opacity 0.2s, border 0.2s" }}
+                >
+                  <img src={img} alt={`thumb-${idx}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* Main Details Section */}
+      <div style={{ maxWidth: "100%" }}>
+
+          {/* About this hotel (Description) */}
+          {hotel.description && hotel.description.length > 0 && (
+            <section style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.06)", borderRadius: "16px", padding: "12px", marginBottom: "12px" }}>
+              <div style={{ marginBottom: "8px" }}>
+                <h2 style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--hotel-ink)", margin: "0 0 1px 0" }}>About this hotel</h2>
+              </div>
+              <div>
+                {(showAllDesc ? uniqueDescriptions : uniqueDescriptions.slice(0, 3)).map((descGroup, idx) => {
+                  const isOpen = openDescIndex === idx;
+                  const title = descGroup.name && descGroup.name !== "Overview" ? descGroup.name : "Overview";
+                  return (
+                  <div key={idx} style={{ marginBottom: "8px", border: "1px solid #f1f5f9", borderRadius: "12px", overflow: "hidden" }}>
+                    <button 
+                      type="button"
+                      onClick={() => setOpenDescIndex(isOpen ? -1 : idx)}
+                      style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: isOpen ? "#f8fafc" : "#fff", border: "none", cursor: "pointer", textAlign: "left", transition: "background 0.2s" }}
+                      onMouseOver={(e) => e.currentTarget.style.background = "#f8fafc"}
+                      onMouseOut={(e) => e.currentTarget.style.background = isOpen ? "#f8fafc" : "#fff"}
+                    >
+                      <h3 style={{ fontSize: "0.9rem", fontWeight: 700, color: isOpen ? "var(--hotel-ink)" : "#475569", margin: 0 }}>{title}</h3>
+                      <span style={{ fontSize: "0.8rem", color: "#94a3b8", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.3s ease" }}>▼</span>
+                    </button>
+                    {isOpen && (
+                      <div style={{ padding: "0 16px 16px 16px", background: "#f8fafc" }}>
+                        {Array.isArray(descGroup.detail) ? (
+                          descGroup.detail.map((text, tidx) => (
+                            <p key={tidx} style={{ fontSize: "0.85rem", color: "var(--hotel-muted)", margin: tidx === 0 ? "0 0 6px 0" : "6px 0", lineHeight: "1.6" }}>
+                              {text}
+                            </p>
+                          ))
+                        ) : (
+                          <p style={{ fontSize: "0.85rem", color: "var(--hotel-muted)", margin: 0, lineHeight: "1.6" }}>{descGroup.detail}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  );
+                })}
+                {uniqueDescriptions.length > 3 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllDesc(!showAllDesc)}
+                    style={{ background: "transparent", color: "#e11d48", border: "none", padding: "4px 8px", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer", marginTop: "4px" }}
+                    onMouseOver={(e) => e.currentTarget.style.textDecoration = "underline"}
+                    onMouseOut={(e) => e.currentTarget.style.textDecoration = "none"}
+                  >
+                    {showAllDesc ? "View less" : "View more"}
+                  </button>
+                )}
+              </div>
+            </section>
+          )}
+
+
+
+          {/* Hotel Policies Section */}
+          {(hotel.hotelPolicy || (hotel.policyAndInstruction && hotel.policyAndInstruction.length > 0)) && (
+            <section style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.06)", borderRadius: "16px", padding: "12px", marginBottom: "12px" }}>
+              <h3 style={{ margin: "0 0 12px 0", fontSize: "1.05rem", fontWeight: 600, color: "var(--hotel-ink)" }}>Hotel Policies &amp; Information</h3>
+              
+              {hotel.hotelPolicy && (!hotel.policyAndInstruction || hotel.policyAndInstruction.length === 0) && (
+                <div style={{ marginBottom: "12px" }}>
+                  <p style={{ fontSize: "0.78rem", color: "var(--hotel-muted)", margin: 0, lineHeight: "1.4" }}>{hotel.hotelPolicy}</p>
+                </div>
+              )}
+
+              {hotel.policyAndInstruction && hotel.policyAndInstruction.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {(() => {
+                    const renderedTexts = new Set();
+                    const allPolicies = hotel.policyAndInstruction.reduce((acc, current) => {
+                      const name = current.name || current.Name || "Policy";
+                      const existing = acc.find(item => (item.name || item.Name || "Policy") === name);
+                      if (existing) {
+                        existing.data = [...(existing.data || existing.Data || []), ...(current.data || current.Data || [])];
+                      } else {
+                        acc.push({ ...current, data: [...(current.data || current.Data || [])] });
+                      }
+                      return acc;
+                    }, []).map((policy, idx) => {
+                      const policyName = policy.name || policy.Name || "Policy";
+                      
+                      const formattedData = (policy.data || []).map(subPolicy => {
+                        const details = (subPolicy.detail || subPolicy.Detail || []).map(desc => {
+                          let cleanDesc = desc;
+                          try {
+                            if (typeof desc === 'string' && (desc.trim().startsWith('{') || desc.trim().startsWith('['))) {
+                              const parsed = JSON.parse(desc);
+                              if (typeof parsed === 'object' && parsed !== null) {
+                                cleanDesc = Object.values(parsed).join(' ');
+                              }
+                            }
+                          } catch (e) {}
+                          return cleanDesc;
+                        }).filter(desc => {
+                          if (!desc) return false;
+                          const norm = String(desc).toLowerCase().replace(/[^a-z0-9]/g, '');
+                          if (renderedTexts.has(norm)) return false;
+                          renderedTexts.add(norm);
+                          return true;
+                        });
+                        return { ...subPolicy, finalDetails: details };
+                      }).filter(sub => sub.finalDetails.length > 0);
+
+                      if (formattedData.length === 0) return null;
+
+                      return (
+                        <div key={idx}>
+                          <strong style={{ display: "block", fontSize: "0.85rem", color: "var(--hotel-ink)", margin: "0 0 4px 0" }}>
+                            {policyName}
+                          </strong>
+                          {formattedData.map((subPolicy, sIdx) => {
+                            const showSubName = subPolicy.subName && subPolicy.subName.trim().toLowerCase() !== policyName.trim().toLowerCase();
+                            return (
+                              <div key={sIdx} style={{ marginBottom: "6px" }}>
+                                {showSubName && <strong style={{ fontSize: "0.78rem", color: "var(--hotel-ink)", display: "block" }}>{subPolicy.subName}</strong>}
+                                {subPolicy.finalDetails.map((desc, dIdx) => (
+                                  <p key={dIdx} style={{ fontSize: "0.78rem", color: "var(--hotel-muted)", margin: "0 0 2px 0", lineHeight: "1.4" }}>• {desc}</p>
+                                ))}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    }).filter(Boolean);
+
+                    const visiblePolicies = showAllPolicies ? allPolicies : allPolicies.slice(0, POLICY_PREVIEW_COUNT);
+                    
+                    return (
+                      <>
+                        {visiblePolicies}
+                        {allPolicies.length > POLICY_PREVIEW_COUNT && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllPolicies(!showAllPolicies)}
+                            style={{ background: "transparent", color: "#e11d48", border: "none", padding: "4px 8px", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignSelf: "flex-start", marginTop: "4px" }}
+                            onMouseOver={(e) => e.currentTarget.style.textDecoration = "underline"}
+                            onMouseOut={(e) => e.currentTarget.style.textDecoration = "none"}
+                          >
+                            {showAllPolicies ? "View less" : "View more"}
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+            </section>
+          )}
+
+
+          {/* Property Views Section (Rendered dynamically if available in API data) */}
+          {views.length > 0 && (
+            <section id="section-property-views" style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.06)", borderRadius: "16px", padding: "12px", marginBottom: "12px" }}>
+              <h3 style={{ margin: "0 0 12px 0", fontSize: "1.05rem", fontWeight: 600, color: "var(--hotel-ink)" }}>Property Views</h3>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px" }}>
+                {views.map((item, idx) => (
+                  <div key={idx} style={{ fontSize: "0.82rem", color: "var(--hotel-ink)", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ fontSize: "0.95rem" }}>{getViewSymbol(item)}</span>
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Property Amenities & Facilities */}
+          {general.length > 0 && (() => {
+            const visibleItems = general.slice(0, AMENITY_PREVIEW_COUNT);
+            return (
+              <section id="section-facilities" style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.06)", borderRadius: "16px", padding: "16px", marginBottom: "12px" }}>
+                <h3 style={{ margin: "0 0 14px 0", fontSize: "1.05rem", fontWeight: 600, color: "var(--hotel-ink)" }}>Property Amenities &amp; Facilities</h3>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                  {visibleItems.map((item, idx) => {
+                    const name = getAmenityName(item);
+                    if (!name) return null;
+                    const { icon, color } = getAmenityIcon(item);
+                    return (
+                      <div key={idx} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "5px 10px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "0.78rem", color: "var(--hotel-ink)", whiteSpace: "nowrap" }}>
+                        <i className={icon} style={{ fontSize: "0.88rem", color, flexShrink: 0 }}></i>
+                        <span>{name}</span>
+                      </div>
+                    );
+                  })}
+                  {general.length > AMENITY_PREVIEW_COUNT && (
+                    <button
+                      type="button"
+                      onClick={() => setListModal({ title: "Property Amenities & Facilities", items: general, type: "amenity" })}
+                      style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "5px 10px", color: "#64748b", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", transition: "background 0.2s" }}
+                      onMouseOver={e => e.currentTarget.style.background = "#e2e8f0"}
+                      onMouseOut={e => e.currentTarget.style.background = "#f1f5f9"}
+                    >
+                      +{general.length - AMENITY_PREVIEW_COUNT} more
+                    </button>
+                  )}
+                </div>
+              </section>
+            );
+          })()}
+
+          {/* Dining Section (Rendered dynamically if available in API data) */}
+          {dining.length > 0 && (
+            <section id="section-dining" style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.06)", borderRadius: "16px", padding: "16px", marginBottom: "12px" }}>
+              <h3 style={{ margin: "0 0 14px 0", fontSize: "1.05rem", fontWeight: 600, color: "var(--hotel-ink)" }}>Dining &amp; Culinary</h3>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                {dining.slice(0, DINING_PREVIEW_COUNT).map((item, idx) => (
+                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "5px 10px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "0.78rem", color: "var(--hotel-ink)", whiteSpace: "nowrap" }}>
+                    <span style={{ fontSize: "0.88rem" }}>{getDiningSymbol(item)}</span>
+                    <span>{item}</span>
+                  </div>
+                ))}
+                {dining.length > DINING_PREVIEW_COUNT && (
+                  <button
+                    type="button"
+                    onClick={() => setListModal({ title: "Dining & Culinary", items: dining, type: "dining" })}
+                    style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "5px 10px", color: "#64748b", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", transition: "background 0.2s" }}
+                    onMouseOver={e => e.currentTarget.style.background = "#e2e8f0"}
+                    onMouseOut={e => e.currentTarget.style.background = "#f1f5f9"}
+                  >
+                    +{dining.length - DINING_PREVIEW_COUNT} more
+                  </button>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* Nearby Attractions Section (Rendered dynamically if available in API data) */}
+          {attractions.length > 0 && (
+            <section id="section-nearby-attractions" className="hotel-attractions-section" style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.06)", borderRadius: "16px", padding: "16px", marginBottom: "12px" }}>
+              <h3 className="hotel-attractions-title" style={{ margin: "0 0 14px 0", fontSize: "1.05rem", fontWeight: 600, color: "var(--hotel-ink)" }}>Nearby Attractions</h3>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                {attractions.slice(0, ATTRACTION_PREVIEW_COUNT).map((item, idx) => {
+                  const isObj = typeof item === 'object';
+                  const name = isObj ? item.name : item;
+                  const distance = isObj ? item.distance : "";
+
+                  return (
+                    <div key={idx} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "5px 10px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "0.78rem", color: "var(--hotel-ink)", whiteSpace: "nowrap" }}>
+                      <span style={{ fontSize: "0.88rem" }}>{getAttractionSymbol(name)}</span>
+                      <span>{name}</span>
+                      {distance && <span style={{ color: "#94a3b8", fontSize: "0.7rem", marginLeft: "2px" }}>{distance}</span>}
+                    </div>
+                  );
+                })}
+                {attractions.length > ATTRACTION_PREVIEW_COUNT && (
+                  <button
+                    type="button"
+                    onClick={() => setListModal({ title: "Nearby Attractions", items: attractions, type: "attraction" })}
+                    style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "5px 10px", color: "#64748b", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", transition: "background 0.2s" }}
+                    onMouseOver={e => e.currentTarget.style.background = "#e2e8f0"}
+                    onMouseOut={e => e.currentTarget.style.background = "#f1f5f9"}
+                  >
+                    +{attractions.length - ATTRACTION_PREVIEW_COUNT} more
+                  </button>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* Available Rooms & Rates List */}
+          <section id="section-rooms" style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.06)", borderRadius: "16px", padding: "12px", marginBottom: "12px" }}>
+            <div style={{ marginBottom: "12px" }}>
+              <h3 style={{ margin: "0 0 2px 0", fontSize: "1.05rem", fontWeight: 600, color: "var(--hotel-ink)" }}>Available rooms &amp; rates</h3>
+              <p style={{ margin: 0, fontSize: "0.78rem", color: "var(--hotel-muted)" }}>
+                {roomsCount > 1 
+                  ? `Select Room ${selectedMultiRooms.length + 1} of ${roomsCount} to begin your reservation.` 
+                  : `Select a room type to begin your reservation. Rates are live.`}
+              </p>
+            </div>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              {hotel.offers && hotel.offers.length > 0 ? (
+              <RoomCategoryAccordion
+                offers={hotel.offers}
+                images={hotel.images}
+                gallery={gallery}
+                selectedOffer={offer}
+                selectingOfferId={selectingOfferId}
+                onSelectOffer={(roomOffer) => {
+                  handleSelectOffer(roomOffer);
+                  setCurrentStep(2);
+                }}
+                roomsCount={roomsCount}
+              />
+              ) : (
+                <div style={{ padding: "20px", textAlign: "center", color: "var(--hotel-muted)" }}>
+                  <p>No active rooms returned for the selected dates. Please search for different dates.</p>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Location Map Section */}
+          {hotel.address && (
+            <section id="section-map" style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.06)", borderRadius: "16px", padding: "12px" }}>
+              <div style={{ marginBottom: "12px" }}>
+                <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 600, color: "var(--hotel-ink)" }}>Location</h3>
+                <p style={{ margin: "4px 0 0 0", color: "var(--hotel-muted)", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ color: "#ff0000", fontSize: "1.1rem" }}>📍</span> {hotel.address}
+                </p>
+              </div>
+              <div style={{ position: "relative", width: "100%", height: "240px", borderRadius: "14px", overflow: "hidden", border: "1px solid var(--hotel-border)" }}>
+                <iframe
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(hotel.address)}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
+                  style={{ width: "100%", height: "100%", border: 0 }}
+                  allowFullScreen=""
+                  loading="lazy"
+                  title="Hotel Map View"
+                />
+              </div>
+            </section>
+          )}
+        </div>
+
+      {/* List Modal for Amenities, Dining, and Attractions */}
+      {listModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setListModal(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 4000, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px", background: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(4px)" }}
+        >
+          <div 
+            onClick={e => e.stopPropagation()}
+            style={{ background: "#fff", borderRadius: "16px", width: "100%", maxWidth: "550px", maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 60px rgba(0,0,0,0.2)", overflow: "hidden" }}
+          >
+            <div style={{ padding: "20px 24px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8fafc" }}>
+              <div>
+                <h3 style={{ margin: "0 0 4px 0", fontSize: "1.1rem", fontWeight: 700, color: "var(--hotel-ink)" }}>{listModal.title}</h3>
+                <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--hotel-muted)" }}>{hotel.name}</p>
+              </div>
+              <button 
+                onClick={() => setListModal(null)}
+                style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "50%", width: "32px", height: "32px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#64748b" }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ padding: "24px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                {listModal.items.map((item, idx) => {
+                  let name, iconElement;
+                  
+                  if (listModal.type === "amenity") {
+                    name = getAmenityName(item);
+                    if (!name) return null;
+                    const { icon, color } = getAmenityIcon(item);
+                    iconElement = <i className={icon} style={{ color, fontSize: "1rem", flexShrink: 0, width: "18px", textAlign: "center" }}></i>;
+                  } else if (listModal.type === "dining") {
+                    name = item;
+                    iconElement = <span style={{ fontSize: "0.95rem" }}>{getDiningSymbol(item)}</span>;
+                  } else if (listModal.type === "attraction") {
+                    const isObj = typeof item === 'object';
+                    name = isObj ? item.name : item;
+                    const distance = isObj ? item.distance : "";
+                    iconElement = <span style={{ fontSize: "0.95rem" }}>{getAttractionSymbol(name)}</span>;
+                    return (
+                      <div key={idx} style={{ background: "#f8fafc", border: "1px solid #e2e8f0", padding: "8px 14px", borderRadius: "8px", fontSize: "0.85rem", color: "var(--hotel-ink)", display: "flex", alignItems: "center", gap: "8px", width: "100%", justifyContent: "space-between" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          {iconElement}
+                          <span>{name}</span>
+                        </div>
+                        {distance && <span style={{ color: "#94a3b8", fontSize: "0.75rem", fontWeight: 500 }}>{distance}</span>}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={idx} style={{ background: "#f8fafc", border: "1px solid #e2e8f0", padding: "6px 12px", borderRadius: "8px", fontSize: "0.85rem", color: "var(--hotel-ink)", display: "flex", alignItems: "center", gap: "8px" }}>
+                      {iconElement}
+                      <span>{name}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

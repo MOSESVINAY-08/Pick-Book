@@ -1,0 +1,2268 @@
+/* eslint-disable */
+import React, { useEffect, useLayoutEffect, useMemo, useState, useRef } from "react";
+import {
+  ArrowLeft, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Copy, Home, MapPin, ShieldCheck, Sparkles, Star, UserRound, Loader2, BedDouble
+} from "lucide-react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { toDisplayDate } from "../../utils/apiDateFormat";
+import BookingConfirmationModal from "../../components/booking/BookingConfirmationModal";
+import { navigateWithAuth, isUserAuthenticated } from "../../utils/authNavigation";
+import { isTokenExpired } from "../../services/authSession";
+import { blockRoom, getHotelInfo, getHotelRoom, bookHotelRoom } from "../../services/hotelBookingService";
+import { fetchCouponsAndOffers } from "../../services/unifiedCouponService";
+import { listTravelers } from "../../services/travelerService";
+import { buildGuestSummary, buildStayFacts, buildStayHighlights, formatNightLabel, getHotelVisuals } from "./hotelPresentation";
+
+import HotelDetail from "./HotelDetail";
+import "../../STYLES/HotelCheckoutExperience.css";
+import { readHotelBookingFlowState, writeHotelBookingFlowState } from "./hotelBookingFlowStore";
+
+const formatCurrency = (amount) => `INR ${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Math.round(Number(amount) || 0))}`;
+const getHotelPromoDiscountLabel = (promo) => {
+  const value = Number(promo?.value || 0);
+  if (!value) return "HOTEL DEAL";
+  return String(promo?.couponType || "").toLowerCase().includes("percent")
+    ? `${value}% OFF`
+    : `${formatCurrency(value)} OFF`;
+};
+const calculateNights = (inDate, outDate) => (!inDate || !outDate ? 1 : Math.ceil(Math.abs(new Date(outDate) - new Date(inDate)) / 86400000) || 1);
+const isValidEmail = (email) => /^\S+@\S+\.\S+$/.test(String(email || "").trim());
+const isValidMobile = (mobile) => String(mobile || "").replace(/\D/g, "").length >= 10 && String(mobile || "").replace(/\D/g, "").length <= 13;
+const getTitleGenderError = (title, gender) => {
+  if (!title || !gender || gender === "Other" || title === "Dr") return "";
+  const femaleTitles = ["Ms", "Mrs", "Miss"];
+  const maleTitles = ["Mr", "Mstr"];
+  if (femaleTitles.includes(title) && gender !== "Female") {
+    return `${title === "Miss" ? "Miss" : title === "Mrs" ? "Mrs." : "Ms."} title requires Female gender.`;
+  }
+  if (maleTitles.includes(title) && gender !== "Male") {
+    return `${title === "Mstr" ? "Mstr" : "Mr."} title requires Male gender.`;
+  }
+  return "";
+};
+const readQueryValue = (params, key, fallback = "") => String(params.get(key) ?? "").trim() || fallback;
+const toTitleCase = (str) => {
+  if (!str) return "";
+  return str
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
+
+function parseHotelFromSearch(params) {
+  const hotelId = readQueryValue(params, "hotelId");
+  const name = readQueryValue(params, "hotelName");
+  if (!hotelId && !name) return null;
+  return {
+    hotelId,
+    name: name || "Hotel stay",
+    city: readQueryValue(params, "hotelCity"),
+    area: readQueryValue(params, "hotelArea"),
+    address: readQueryValue(params, "hotelAddress"),
+    rating: Number(readQueryValue(params, "hotelRating")) || 0,
+    tag: readQueryValue(params, "hotelTag"),
+    amenities: readQueryValue(params, "hotelAmenities").split("|").map((item) => item.trim()).filter(Boolean),
+    offers: [],
+  };
+}
+
+function HotelDetailsPremiumLoader() {
+  const [statusIdx, setStatusIdx] = useState(0);
+  const statuses = [
+    "Contacting properties for real-time rates...",
+    "Verifying room availability...",
+    "Securing exclusive Pick&book discounts...",
+    "Initializing checkout workflow...",
+    "Polishing layout templates..."
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setStatusIdx((prev) => (prev + 1) % statuses.length);
+    }, 1500);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="hotel-details-premium-loader" style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "40px 30px",
+      background: "rgba(255, 255, 255, 0.9)",
+      backdropFilter: "blur(20px)",
+      border: "1px solid rgba(255, 255, 255, 0.5)",
+      borderRadius: "24px",
+      boxShadow: "0 20px 50px rgba(0,0,0,0.06)",
+      maxWidth: "500px",
+      width: "100%",
+      margin: "40px auto",
+      textAlign: "center"
+    }}>
+      {/* Animated glowing loader ring */}
+      <div style={{ position: "relative", width: "80px", height: "80px", marginBottom: "24px" }}>
+        <div style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          borderRadius: "50%",
+          border: "4px solid #f1f5f9",
+          borderTopColor: "#ff0000",
+          animation: "hotel-spin 1s linear infinite"
+        }} />
+        <div style={{
+          position: "absolute",
+          top: "-6px",
+          left: "-6px",
+          right: "-6px",
+          bottom: "-6px",
+          borderRadius: "50%",
+          border: "4px solid transparent",
+          borderBottomColor: "#ff0000",
+          opacity: 0.6,
+          animation: "hotel-spin 1.8s linear infinite reverse"
+        }} />
+      </div>
+
+      <h3 style={{
+        fontFamily: "'Outfit', sans-serif",
+        fontSize: "1.3rem",
+        fontWeight: 700,
+        color: "#0f172a",
+        margin: "0 0 8px 0"
+      }}>
+        Loading Stay Details
+      </h3>
+
+      <div style={{
+        height: "20px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+        marginBottom: "20px"
+      }}>
+        <p style={{
+          fontSize: "0.9rem",
+          color: "#64748b",
+          margin: 0,
+          animation: "hotel-slide-up 0.5s ease-out"
+        }} key={statusIdx}>
+          {statuses[statusIdx]}
+        </p>
+      </div>
+
+      {/* Progress Bar indicator */}
+      <div style={{
+        width: "100%",
+        height: "4px",
+        background: "#e2e8f0",
+        borderRadius: "2px",
+        overflow: "hidden"
+      }}>
+        <div style={{
+          width: "70%",
+          height: "100%",
+          background: "linear-gradient(90deg, #ff0000, #ff0000)",
+          borderRadius: "2px",
+          animation: "hotel-pulse-progress 2s ease-in-out infinite"
+        }} />
+      </div>
+
+      <style>{`
+        @keyframes hotel-spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes hotel-slide-up {
+          0% { transform: translateY(15px); opacity: 0; }
+          100% { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes hotel-pulse-progress {
+          0% { transform: translateX(-100%); }
+          50% { transform: translateX(50%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
+    </div>
+      );
+}
+
+function parseSearchContext(params) {
+  const destination = readQueryValue(params, "destination");
+  const checkInDate = readQueryValue(params, "checkInDate");
+  const checkOutDate = readQueryValue(params, "checkOutDate");
+  const adults = readQueryValue(params, "adults");
+  const rooms = readQueryValue(params, "rooms");
+  const children = readQueryValue(params, "children");
+  const guests = readQueryValue(params, "guests");
+  return destination || checkInDate || checkOutDate || adults || rooms || guests
+    ? { destination, checkInDate, checkOutDate, adults, rooms, children, guests }
+    : null;
+}
+
+export default function HotelPassengerDetailsPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const incomingState = useMemo(() => {
+    const routerState = location.state && typeof location.state === "object" ? location.state : null;
+    const storedState = readHotelBookingFlowState() || {};
+    const merged = { ...storedState, ...routerState };
+    if (merged.hotel || merged.offer) {
+      writeHotelBookingFlowState(merged);
+      return merged;
+    }
+    return {};
+  }, [location.state]);
+
+  const [hotel, setHotel] = useState(() => incomingState.hotel || parseHotelFromSearch(searchParams));
+  const [offer, setOffer] = useState(() => incomingState.offer || null);
+  
+
+  const initialOfferId = readQueryValue(searchParams, "offerId");
+  const searchContext = useMemo(() => incomingState.searchContext || parseSearchContext(searchParams), [incomingState.searchContext, searchParams]);
+  const [offerLoadError, setOfferLoadError] = useState("");
+  const [isLoadingOffer, setIsLoadingOffer] = useState(Boolean(!incomingState.offer && initialOfferId));
+  const [selectingOfferId, setSelectingOfferId] = useState("");
+  const [selectedMultiRooms, setSelectedMultiRooms] = useState(() => incomingState.selectedMultiRooms || []);
+  const roomsCount = searchContext?.roomsConfig ? searchContext.roomsConfig.length : 1;
+  const [currentStep, setCurrentStep] = useState(() => incomingState.currentStep || 1);
+  const [specialRequests, setSpecialRequests] = useState([]);
+  const [additionalNotes, setAdditionalNotes] = useState("");
+  const [gstNumber, setGstNumber] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [checkoutPayload, setCheckoutPayload] = useState(null);
+
+  useLayoutEffect(() => {
+    const resetScroll = () => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      document.getElementById("root")?.scrollTo(0, 0);
+    };
+
+    resetScroll();
+    const frameId = window.requestAnimationFrame(resetScroll);
+    return () => window.cancelAnimationFrame(frameId);
+  }, [location.key, location.pathname, location.search]);
+
+  const autoContinueProcessed = useRef(false);
+  useEffect(() => {
+    const isAutoContinue =
+      location.state?.autoContinue ||
+      searchParams.get("autoContinue") === "true";
+
+    if (isAutoContinue && isUserAuthenticated() && !autoContinueProcessed.current) {
+      autoContinueProcessed.current = true;
+      // Clean the autoContinue param from the URL without auto-triggering blockRoom/handleContinue.
+      // The user must click Continue manually after returning from login.
+      const nextParams = new URLSearchParams(location.search);
+      nextParams.delete("autoContinue");
+      const nextSearch = nextParams.toString() ? `?${nextParams.toString()}` : "";
+      navigate(`/hotel/passenger-details${nextSearch}`, { replace: true, state: {} });
+    }
+  }, [location, searchParams]);
+
+  useEffect(() => {
+    if (searchParams.get("autoStep2") === "true" && isUserAuthenticated()) {
+      setCurrentStep(2);
+      const nextParams = new URLSearchParams(location.search);
+      nextParams.delete("autoStep2");
+      const nextSearch = nextParams.toString() ? `?${nextParams.toString()}` : "";
+      navigate(`/hotel/passenger-details${nextSearch}`, { replace: true, state: {} });
+    }
+  }, [searchParams, location.search, navigate]);
+
+  // Parse roomsConfig and guest counts
+  const roomsConfig = useMemo(() => {
+    const raw = searchContext?.roomsConfig || searchContext?.rooms;
+    if (raw && typeof raw === "string") {
+      try {
+        return JSON.parse(raw);
+      } catch (e) {
+        return null;
+      }
+    }
+    if (Array.isArray(raw)) return raw;
+    return null;
+  }, [searchContext]);
+
+  const totalAdults = useMemo(() => {
+    if (roomsConfig && Array.isArray(roomsConfig)) {
+      return roomsConfig.reduce((sum, r) => sum + (Number(r.adults) || 0), 0);
+    }
+    return Number(searchContext?.adults || 1);
+  }, [searchContext, roomsConfig]);
+
+  const totalChildren = useMemo(() => {
+    if (roomsConfig && Array.isArray(roomsConfig)) {
+      return roomsConfig.reduce((sum, r) => sum + (Number(r.children) || 0), 0);
+    }
+    return Number(searchContext?.children || 0);
+  }, [searchContext, roomsConfig]);
+
+  const [guests, setGuests] = useState(() => {
+    let initAdults = 1;
+    let initChildren = 0;
+    
+    const rawSearch = incomingState.searchContext || parseSearchContext(searchParams);
+    const raw = rawSearch?.roomsConfig || rawSearch?.rooms;
+    let parsedRooms = null;
+    if (raw && typeof raw === "string") {
+      try { parsedRooms = JSON.parse(raw); } catch(e){}
+    } else if (Array.isArray(raw)) {
+      parsedRooms = raw;
+    }
+    
+    if (parsedRooms && Array.isArray(parsedRooms)) {
+      initAdults = parsedRooms.reduce((sum, r) => sum + (Number(r.adults) || 0), 0);
+      initChildren = parsedRooms.reduce((sum, r) => sum + (Number(r.children) || 0), 0);
+    } else {
+      initAdults = Number(rawSearch?.adults || 1);
+      initChildren = Number(rawSearch?.children || 0);
+    }
+
+    const list = [];
+    list.push({
+      index: 0,
+      type: "adult",
+      title: incomingState.guestTitle || "",
+      fullName: incomingState.guestName || "",
+      age: incomingState.guestAge || "",
+      gender: "",
+      nationality: "India",
+      idProofType: "Aadhaar",
+      idProofNumber: "",
+      email: incomingState.guestEmail || "",
+      mobile: incomingState.guestPhone || "",
+    });
+    for (let i = 1; i < initAdults; i++) {
+      list.push({
+        index: i,
+        type: "adult",
+        title: "",
+        fullName: "",
+        age: "",
+        gender: "",
+        nationality: "India",
+        idProofType: "Aadhaar",
+        idProofNumber: "",
+        email: "",
+        mobile: "",
+      });
+    }
+    for (let i = 0; i < initChildren; i++) {
+      list.push({
+        index: initAdults + i,
+        type: "child",
+        title: "Mstr",
+        fullName: "",
+        age: "",
+        gender: "",
+        nationality: "India",
+        idProofType: "Aadhaar",
+        idProofNumber: "",
+        email: "",
+        mobile: "",
+      });
+    }
+    return list;
+  });
+
+  const updateGuest = (index, field, value) => {
+    setFormError("");
+    setGuests((current) => {
+      const next = [...current];
+      let updated = { ...next[index], [field]: value };
+      if (field === "fullName") {
+        const cleanVal = String(value || "").trim();
+        const parts = cleanVal.split(/\s+/);
+        updated.firstName = toTitleCase(parts[0] || "");
+        updated.lastName = toTitleCase(parts.slice(1).join(" ") || "");
+        updated.fullName = toTitleCase(cleanVal);
+      }
+      next[index] = updated;
+      return next;
+    });
+    setErrors((current) => {
+      const next = { ...current };
+      delete next[`guest_${index}_${field}`];
+      delete next[`guest_${index}_firstName`];
+      delete next[`guest_${index}_lastName`];
+      const nextGuest = { ...guests[index], [field]: value };
+      const titleGenderError = getTitleGenderError(nextGuest.title, nextGuest.gender);
+      if (titleGenderError) {
+        next[`guest_${index}_titleGender`] = titleGenderError;
+      } else {
+        delete next[`guest_${index}_titleGender`];
+      }
+      return next;
+    });
+  };
+
+  const applyTravellerToGuest = (traveler, index) => {
+    setGuests((current) => {
+      const next = [...current];
+      const fName = toTitleCase(traveler.firstName || "");
+      const lName = toTitleCase(traveler.lastName || "");
+      next[index] = {
+        ...next[index],
+        title: traveler.title || "Mr",
+        firstName: fName,
+        lastName: lName,
+        fullName: `${fName} ${lName}`.trim(),
+        age: traveler.age || "",
+        gender: traveler.gender || "Male",
+        email: traveler.email || "",
+        mobile: traveler.mobile || traveler.phone || "",
+      };
+      return next;
+    });
+  };
+
+  const [isExistingGuest, setIsExistingGuest] = useState(false);
+  const [agreedToAll, setAgreedToAll] = useState(false);
+  const [showReqPopup, setShowReqPopup] = useState(false);
+  const [selectedTravelerId, setSelectedTravelerId] = useState("");
+  const [savedTravelers, setSavedTravelers] = useState([]);
+  const [travelerLoadError, setTravelerLoadError] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(Boolean(incomingState.agreedToTerms));
+  const [formError, setFormError] = useState("");
+  const [errors, setErrors] = useState({});
+  const [activeImageTab, setActiveImageTab] = useState("All");
+  
+  // Validation Flags from blockRoom
+  const [isPANMandatory, setIsPANMandatory] = useState(incomingState.isPANMandatory || false);
+  const [isPassportMandatory, setIsPassportMandatory] = useState(incomingState.isPassportMandatory || false);
+  
+  // Storing original block room response
+  const [blockRoomResponse, setBlockRoomResponse] = useState(incomingState.blockRoomResponse || null);
+
+  // Coupon State
+  const [couponCode, setCouponCode] = useState(incomingState.couponCode || "");
+  const [couponSuccess, setCouponSuccess] = useState(incomingState.couponSuccess || "");
+  const [couponError, setCouponError] = useState(incomingState.couponError || "");
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [availableCoupons, setAvailableCoupons] = useState([]);
+  const [featuredOffers, setFeaturedOffers] = useState([]);
+  const hotelOffersCarouselRef = useRef(null);
+  const hotelCouponsCarouselRef = useRef(null);
+  const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
+  const [isLoadingOffers, setIsLoadingOffers] = useState(false);
+  const [copiedPromoCode, setCopiedPromoCode] = useState("");
+
+  const [showChildAgeAlert, setShowChildAgeAlert] = useState(false);
+  const [alertChildIndex, setAlertChildIndex] = useState(null);
+  const [isOtherGuestsOpen, setIsOtherGuestsOpen] = useState(false);
+
+  const [rulePets, setRulePets] = useState(false);
+  const [ruleFood, setRuleFood] = useState(false);
+  const [rulePolicy, setRulePolicy] = useState(false);
+  const [ruleSmoking, setRuleSmoking] = useState(false);
+  const [expandedGuestIndex, setExpandedGuestIndex] = useState(null);
+
+  const handleChildAgeChange = (index, val) => {
+    const numericAge = parseInt(val, 10);
+    updateGuest(index, "age", val);
+    if (!isNaN(numericAge) && numericAge > 11) {
+      setAlertChildIndex(index);
+      setShowChildAgeAlert(true);
+    }
+  };
+
+  const handleNameChange = (index, field, value) => {
+    setGuests((current) => {
+      const next = [...current];
+      const updatedGuest = { ...next[index], [field]: value };
+      const fName = field === "firstName" ? value : (updatedGuest.firstName || "");
+      const lName = field === "lastName" ? value : (updatedGuest.lastName || "");
+      updatedGuest.fullName = `${fName} ${lName}`.trim();
+      next[index] = updatedGuest;
+      return next;
+    });
+    setErrors((current) => {
+      const next = { ...current };
+      delete next[`guest_${index}_firstName`];
+      delete next[`guest_${index}_lastName`];
+      delete next[`guest_${index}_fullName`];
+      return next;
+    });
+  };
+
+  // Compatibility getters/setters for legacy code
+  const guestName = guests[0]?.fullName || "";
+  const guestTitle = guests[0]?.title || "";
+  const guestAge = guests[0]?.age || "";
+  const guestPassportNo = "";
+  const guestEmail = guests[0]?.email || "";
+  const guestPhone = guests[0]?.mobile || "";
+
+  const checkInDate = offer?.checkInDate || searchContext?.checkInDate || "";
+  const checkOutDate = offer?.checkOutDate || searchContext?.checkOutDate || "";
+  const nights = useMemo(() => calculateNights(checkInDate, checkOutDate), [checkInDate, checkOutDate]);
+  const visuals = useMemo(() => getHotelVisuals(`${hotel?.hotelId || hotel?.name || "hotel"}-${searchContext?.destination || "stay"}`), [hotel?.hotelId, hotel?.name, searchContext?.destination]);
+  const gallery = useMemo(() => {
+    const apiImages = hotel?.images || [];
+    if (apiImages.length >= 5) {
+      return apiImages.slice(0, 5);
+    }
+    if (apiImages.length > 0) {
+      return [...apiImages, ...visuals.gallery.slice(apiImages.length, 5)];
+    }
+    return visuals.gallery;
+  }, [hotel?.images, visuals.gallery]);
+
+  const displayedImages = useMemo(() => {
+    const rawImages = hotel?.images && hotel.images.length > 0 ? hotel.images : gallery;
+    const tab = activeImageTab;
+    if (!rawImages || rawImages.length === 0) return [];
+    
+    const hasCategoryObj = rawImages[0] && typeof rawImages[0] === "object" && (rawImages[0].Category || rawImages[0].category || rawImages[0].Caption || rawImages[0].caption);
+    
+    if (hasCategoryObj) {
+      const filtered = rawImages.filter(img => {
+        const cat = String(img.Category || img.category || img.Caption || img.caption || "").toLowerCase();
+        if (tab === "All") return true;
+        if (tab === "Rooms") return cat.includes("room") || cat.includes("bed") || cat.includes("deluxe") || cat.includes("suite") || cat.includes("interior");
+        if (tab === "Property Views") return cat.includes("view") || cat.includes("exterior") || cat.includes("garden") || cat.includes("landscape");
+        if (tab === "Facilities") return cat.includes("facility") || cat.includes("pool") || cat.includes("gym") || cat.includes("lobby") || cat.includes("spa") || cat.includes("parking");
+        if (tab === "Dining") return cat.includes("dining") || cat.includes("restaurant") || cat.includes("food") || cat.includes("breakfast") || cat.includes("bar");
+        if (tab === "Nearby Attractions") return cat.includes("attraction") || cat.includes("nearby") || cat.includes("city") || cat.includes("location");
+        return false;
+      }).map(img => img.ImageUrl || img.imageUrl || img.Url || img.url || img);
+      
+      if (filtered.length > 0) return filtered;
+    }
+
+    const urlStrings = rawImages.map(img => typeof img === "object" ? (img.ImageUrl || img.imageUrl || img.Url || img.url || "") : String(img)).filter(Boolean);
+
+    if (tab === "All") return urlStrings;
+
+    const filtered = urlStrings.filter(url => {
+      const lower = url.toLowerCase();
+      if (tab === "Rooms") return lower.includes("room") || lower.includes("bed") || lower.includes("deluxe") || lower.includes("suite") || lower.includes("bedroom") || lower.includes("interior");
+      if (tab === "Property Views") return lower.includes("view") || lower.includes("exterior") || lower.includes("garden") || lower.includes("terrace") || lower.includes("building");
+      if (tab === "Facilities") return lower.includes("pool") || lower.includes("gym") || lower.includes("lobby") || lower.includes("spa") || lower.includes("facility") || lower.includes("fitness") || lower.includes("reception");
+      if (tab === "Dining") return lower.includes("dining") || lower.includes("restaurant") || lower.includes("food") || lower.includes("breakfast") || lower.includes("bar") || lower.includes("cafe");
+      if (tab === "Nearby Attractions") return lower.includes("attraction") || lower.includes("nearby") || lower.includes("city") || lower.includes("map") || lower.includes("street");
+      return false;
+    });
+
+    if (filtered.length === 0) {
+      const tabIndex = ["All", "Rooms", "Property Views", "Facilities", "Dining", "Nearby Attractions"].indexOf(tab);
+      if (tabIndex > 0 && urlStrings.length > 0) {
+        const offset = tabIndex % urlStrings.length;
+        return [...urlStrings.slice(offset), ...urlStrings.slice(0, offset)];
+      }
+    }
+
+    return filtered.length > 0 ? filtered : urlStrings;
+  }, [hotel?.images, gallery, activeImageTab]);
+
+  const stayFacts = useMemo(() => buildStayFacts(hotel || {}, offer || {}, searchContext || {}), [hotel, offer, searchContext]);
+  const stayHighlights = useMemo(() => buildStayHighlights(hotel || {}, offer || {}, nights), [hotel, offer, nights]);
+
+  const roomsFetchedRef = useRef(false);
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchRoomsAndInfo() {
+      if (!hotel?.hotelId) { setIsLoadingOffer(false); return; }
+      // Prevent duplicate fetches — only fetch once per hotel
+      if (roomsFetchedRef.current) {
+          setIsLoadingOffer(false); 
+          return;
+      }
+      
+      setIsLoadingOffer(true);
+      try {
+        const infoPayload = {
+          TraceId: String(hotel.TraceId || hotel.traceId || ""),
+          ResultIndex: String(hotel.ResultIndex || hotel.resultIndex || ""),
+          SrdvType: String(hotel.SrdvType || hotel.srdvType || "MixAPI"),
+          SrdvIndex: String(hotel.SrdvIndex || hotel.srdvIndex || ""),
+          HotelCode: String(hotel.hotelId || hotel.hotelCode || ""),
+          EndUserIp: "192.168.10.10"
+        };
+        
+        // 1. Get Hotel Info
+        const info = await getHotelInfo(infoPayload);
+        const hotelDetailsObj = info?.HotelDetails || info?.hotelInfoResult?.hotelDetails || info?.HotelInfoResult?.HotelDetails;
+        const fetchedHotelCode = hotelDetailsObj?.HotelCode || hotelDetailsObj?.hotelCode || hotel.hotelId;
+        
+        if (hotelDetailsObj) {
+            const rawFacilities = hotelDetailsObj.HotelFacilities || hotelDetailsObj.hotelFacilities || [];
+
+            const normalizedAmenities = Array.isArray(rawFacilities)
+              ? rawFacilities.filter(f => f)
+              : [];
+              
+            const rawAttractions = hotelDetailsObj.Attractions || hotelDetailsObj.attractions || [];
+
+            setHotel(current => ({
+                ...current,
+                images: hotelDetailsObj.Images || hotelDetailsObj.images || current.images,
+                latitude: hotelDetailsObj.Latitude || hotelDetailsObj.latitude || current.latitude,
+                longitude: hotelDetailsObj.Longitude || hotelDetailsObj.longitude || current.longitude,
+                address: hotelDetailsObj.Address || hotelDetailsObj.address || current.address,
+                amenities: normalizedAmenities.length > 0 ? normalizedAmenities : current.amenities,
+                attractions: rawAttractions,
+                description: hotelDetailsObj.Description || hotelDetailsObj.description || [],
+                hotelPolicy: hotelDetailsObj.HotelPolicy || hotelDetailsObj.hotelPolicy || "",
+                policyAndInstruction: hotelDetailsObj.PolicyAndInstruction || hotelDetailsObj.policyAndInstruction || [],
+                hotelId: fetchedHotelCode
+            }));
+        }
+        
+        // 2. Get Hotel Rooms — this is the critical call for live room pricing
+        const roomPayload = { ...infoPayload, HotelCode: fetchedHotelCode };
+        console.log("[HotelBooking] Calling getHotelRoom with payload:", roomPayload);
+        const roomsResult = await getHotelRoom(roomPayload);
+        console.log("[HotelBooking] getHotelRoom response:", roomsResult);
+        
+        const hotelRoomResult = roomsResult?.getHotelRoomResult || roomsResult?.GetHotelRoomResult || roomsResult?.HotelRoomResult || {};
+        const hotelRoomsDetails = hotelRoomResult?.hotelRoomsDetails || hotelRoomResult?.HotelRoomsDetails;
+
+        if (hotelRoomsDetails && Array.isArray(hotelRoomsDetails)) {
+            const allRooms = [];
+            hotelRoomsDetails.forEach((category) => {
+                const catName = category.categoryName || category.CategoryName || "";
+                if (category.rooms || category.Rooms) {
+                    const catRooms = category.rooms || category.Rooms;
+                    if (Array.isArray(catRooms)) {
+                        catRooms.forEach(r => allRooms.push({ ...r, _categoryName: catName }));
+                    }
+                } else {
+                    allRooms.push({ ...category, _categoryName: catName });
+                }
+            });
+
+            if (allRooms.length > 0) {
+                setHotel(current => ({
+                    ...current,
+                    offers: allRooms.map((r, i) => {
+                        const priceObj = r.price || r.Price || {};
+                        const cancelPolicies = r.cancellationPolicies || r.CancellationPolicies || [];
+                        
+                        // Use ?? to avoid skipping valid 0 values; prioritize b2cDisplayFare
+                        const extractedPrice = Number(
+                          priceObj.b2cDisplayFare ?? priceObj.B2CDisplayFare ??
+                          priceObj.b2cFinalFare ?? priceObj.B2CFinalFare ??
+                          priceObj.offeredPriceRoundedOff ?? priceObj.OfferedPriceRoundedOff ??
+                          priceObj.offeredPrice ?? priceObj.OfferedPrice ??
+                          priceObj.publishedPriceRoundedOff ?? priceObj.PublishedPriceRoundedOff ??
+                          priceObj.roomPrice ?? priceObj.RoomPrice ??
+                          (typeof priceObj === 'number' ? priceObj : 0)
+                        );
+
+                        return {
+                            ...r,
+                          offerId: r.roomId || r.RatePlanCode || `room-${i}`,
+                          selectionKey: `room-${i}-${r.roomId || r.RatePlanCode || r.roomTypeName || r.RoomTypeName || "option"}`,
+                            price: extractedPrice,
+                            originalPrice: priceObj,
+                            currency: priceObj.currencyCode || priceObj.CurrencyCode || "INR",
+                            roomCategory: r.roomTypeName || r.RoomTypeName || r.roomTypeCategory || r.RoomTypeCategory || r._categoryName || "Room",
+                            cancellationPolicy: cancelPolicies?.[0]?.charge || cancelPolicies?.[0]?.Charge ? `Charge: ${cancelPolicies[0].charge || cancelPolicies[0].Charge}` : "Refundable thresholds apply",
+                            cancellationPoliciesData: cancelPolicies,
+                            bedType: r.bedTypes || r.BedTypes || "",
+                            amenities: r.amenities || r.Amenities || [],
+                            hotelSupplements: r.hotelSupplements || r.HotelSupplements || "",
+                            servicesStatus: r.servicesStatus || r.ServicesStatus || [],
+                            isPANMandatory: hotelRoomResult.isPANMandatory || hotelRoomResult.IsPANMandatory || r.isPANMandatory || false,
+                            isPassportMandatory: hotelRoomResult.isPassportMandatory || hotelRoomResult.IsPassportMandatory || r.isPassportMandatory || false
+                        };
+                    })
+                }));
+                // Mark as fetched so we don't re-fetch on state updates
+                roomsFetchedRef.current = true;
+            }
+        } else if (!roomsResult) {
+            throw new Error("Unable to fetch room availability from the live API.");
+        }
+      } catch (err) {
+        console.error("[HotelBooking] fetchRoomsAndInfo error:", err);
+        if (isMounted) setOfferLoadError(err.message || "Unable to reload stay details from the backend.");
+      } finally {
+        if (isMounted) setIsLoadingOffer(false);
+      }
+    }
+    fetchRoomsAndInfo();
+    return () => { isMounted = false; };
+  }, [hotel?.hotelId]);
+
+  useEffect(() => {
+    let isMounted = true;
+    listTravelers()
+      .then((apiList) => { if (isMounted) { setSavedTravelers(Array.isArray(apiList) ? apiList : []); setTravelerLoadError(""); } })
+      .catch(() => { if (isMounted) { setSavedTravelers([]); setTravelerLoadError("Unable to load saved travelers from the backend."); } });
+    return () => { isMounted = false; };
+  }, [currentStep]);
+
+  // Restore pending hotel offer after login — but do NOT auto-trigger blockRoom.
+  // Instead, restore the selection state and let the user click "Choose room" or "Continue" manually.
+  useEffect(() => {
+    const activePortal = sessionStorage.getItem("active_portal");
+    const isAgentUser = localStorage.getItem("b2b_role") === "Agent" && activePortal === "b2b";
+    const token = isAgentUser ? localStorage.getItem("b2b_token") : localStorage.getItem("token");
+    const isLoggedIn = token && !isTokenExpired(token);
+
+    if (isLoggedIn && hotel?.hotelId) {
+      const pendingRaw = sessionStorage.getItem("pending_hotel_offer");
+      if (pendingRaw) {
+        try {
+          const pendingOffer = JSON.parse(pendingRaw);
+          sessionStorage.removeItem("pending_hotel_offer");
+          // Just store the offer in state — don't call blockRoom automatically
+          console.log("[HotelBooking] Restored pending offer after login (user must click Choose room):", pendingOffer);
+        } catch (e) {
+          console.error("Error restoring pending hotel offer:", e);
+        }
+      }
+    }
+  }, [hotel?.hotelId]);
+
+  useEffect(() => {
+    if (hotel || offer) {
+      writeHotelBookingFlowState({
+        hotel,
+        offer,
+        searchContext,
+        guestName,
+        guestTitle,
+        guestAge,
+        guestPassportNo,
+        guestEmail,
+        guestPhone,
+        agreedToTerms,
+        isPANMandatory,
+        isPassportMandatory,
+        blockRoomResponse,
+        currentStep,
+        selectedMultiRooms,
+      });
+    }
+  }, [hotel, offer, searchContext, guestName, guestTitle, guestAge, guestPassportNo, guestEmail, guestPhone, agreedToTerms, isPANMandatory, isPassportMandatory, blockRoomResponse, currentStep, selectedMultiRooms]);
+
+  const handleSelectOffer = async (roomOffer, couponToApply = couponCode) => {
+    // If user is re-selecting (replacing an already chosen room), drop the previous
+    // selection for that slot so we don't accumulate beyond roomsCount.
+    const alreadyPicked = selectedMultiRooms.some(r => r.selectionKey === roomOffer.selectionKey);
+    const cleanedSelection = roomsCount === 1
+      ? []
+      : alreadyPicked
+      ? selectedMultiRooms.filter(r => r.selectionKey !== roomOffer.selectionKey)
+      : selectedMultiRooms;
+    const newSelection = [...cleanedSelection, roomOffer];
+    
+    if (newSelection.length < roomsCount) {
+        setSelectedMultiRooms(newSelection);
+        return; // wait for next room selection
+    }
+
+    setSelectingOfferId(roomOffer.selectionKey);
+    setOfferLoadError("");
+  setSelectedMultiRooms(newSelection);
+  setBlockRoomResponse(null);
+    try {
+      const blockPayload = {
+        TraceId: String(hotel?.TraceId || hotel?.traceId || ""),
+        ResultIndex: String(hotel?.ResultIndex || hotel?.resultIndex || ""),
+        SrdvType: String(hotel?.SrdvType || hotel?.srdvType || "MixAPI"),
+        SrdvIndex: String(hotel?.SrdvIndex || hotel?.srdvIndex || ""),
+        HotelCode: String(hotel?.hotelId || hotel?.hotelCode || ""),
+        HotelName: hotel?.name || "",
+        GuestNationality: "IN",
+        NoOfRooms: roomsCount,
+        ClientReferenceNo: "0",
+        IsVoucherBooking: true,
+        EndUserIp: "192.168.10.10",
+        CouponCode: couponToApply || "",
+        HotelRoomsDetails: newSelection.map(room => {
+          const roomPrice = Number(room.price || room.Price?.OfferedPrice || 0);
+          return {
+            ChildCount: room.childCount || 0,
+            RequireAllPaxDetails: room.requireAllPaxDetails || false,
+            RoomId: room.roomId || "",
+            RoomStatus: room.roomStatus || "Active",
+            RoomIndex: room.roomIndex || "",
+            RoomTypeCode: room.roomTypeCode || "",
+            RoomTypeName: room.roomTypeName || "",
+            RatePlanCode: room.ratePlanCode || "",
+            RatePlan: room.ratePlan || "",
+            InfoSource: room.infoSource || "",
+            SequenceNo: room.sequenceNo || "",
+            DayRates: room.dayRates || [],
+            SupplierPrice: room.supplierPrice || "",
+            RoomPromotion: room.roomPromotion || "",
+            Amenities: room.amenities || [],
+            SmokingPreference: room.smokingPreference || "",
+            BedTypes: room.bedTypes || room.bedType || "",
+            HotelSupplements: room.hotelSupplements || "",
+            LastCancellationDate: room.lastCancellationDate || "",
+            IsPassportMandatory: room.isPassportMandatory || false,
+            IsPANMandatory: room.isPANMandatory || false,
+            FullRefundAllowed: room.fullRefundAllowed || false,
+            CancellationPolicies: room.cancellationPolicies || [],
+            CancellationPolicy: room.cancellationPolicy || "",
+            Inclusion: room.inclusion || [],
+            BedTypeCode: room.bedTypeCode || "",
+            Supplements: room.supplements || "",
+            OfferedPrice: roomPrice,
+            Price: {
+              CurrencyCode: "INR",
+              RoomPrice: roomPrice,
+              PublishedPrice: roomPrice,
+              PublishedPriceRoundedOff: roomPrice,
+              OfferedPrice: roomPrice,
+              OfferedPriceRoundedOff: roomPrice
+            }
+          };
+        })
+      };
+      
+      const blockResp = await blockRoom(blockPayload);
+
+      if (blockResp?.BlockRoomResult?.Error?.ErrorCode === 0 || blockResp?.BlockRoomResult?.IsPriceChanged || blockResp?.blockRoomResult?.error?.errorCode === 0 || blockResp?.blockRoomResult?.isPriceChanged) {
+          // If price changed or success
+          const blockedRoom = blockResp?.BlockRoomResult?.HotelRoomsDetails?.[0] || blockResp?.blockRoomResult?.hotelRoomsDetails?.[0] || {};
+          setIsPANMandatory(blockResp?.BlockRoomResult?.IsPANMandatory || blockResp?.blockRoomResult?.isPANMandatory || blockedRoom.isPANMandatory || false);
+          setIsPassportMandatory(blockResp?.BlockRoomResult?.IsPassportMandatory || blockResp?.blockRoomResult?.isPassportMandatory || blockedRoom.isPassportMandatory || false);
+          setBlockRoomResponse(blockResp);
+      } else if (blockResp?.HotelRoomsDetails?.[0] || blockResp?.hotelRoomsDetails?.[0]) {
+          const blockedRoom = blockResp?.HotelRoomsDetails?.[0] || blockResp?.hotelRoomsDetails?.[0] || {};
+          setIsPANMandatory(blockedRoom.isPANMandatory || false);
+          setIsPassportMandatory(blockedRoom.isPassportMandatory || false);
+          setBlockRoomResponse(blockResp);
+      }
+      
+      // Since we don't have getOfferDetails anymore, use the blocked room info or selected room offer directly
+      setOffer({
+        ...roomOffer,
+        checkInDate: roomOffer.checkInDate || checkInDate,
+        checkOutDate: roomOffer.checkOutDate || checkOutDate,
+      });
+    } catch (err) {
+      setOfferLoadError(err.message || "Unable to hold the selected rooms.");
+      setSelectedMultiRooms([]); // reset on error
+    } finally {
+      setSelectingOfferId("");
+    }
+  };
+
+  const blockedRooms = blockRoomResponse?.BlockRoomResult?.HotelRoomsDetails || 
+                       blockRoomResponse?.blockRoomResult?.hotelRoomsDetails || 
+                       blockRoomResponse?.HotelRoomsDetails || 
+                       blockRoomResponse?.hotelRoomsDetails || [];
+  
+  let basePrice = 0;
+  let tax = 0;
+  let convenienceFee = 0;
+  let markupValue = 0;
+  let couponDiscount = 0;
+  let finalPayable = 0;
+
+  const activePortal = sessionStorage.getItem("active_portal");
+  const isAgent = localStorage.getItem("b2b_role") === "Agent" && activePortal === "b2b";
+  const tokenVal = isAgent ? localStorage.getItem("b2b_token") : localStorage.getItem("token");
+  const hasValidToken = !!(tokenVal && !isTokenExpired(tokenVal));
+
+  if (blockedRooms.length > 0) {
+      blockedRooms.forEach(room => {
+          const price = room.Price || room.price || {};
+          const rawTotal = Number(
+            room.B2CTotalPrice || room.b2cTotalPrice ||
+            price.B2CTotalPrice || price.b2cTotalPrice || price.b2cFinalFare || price.B2CFinalFare ||
+            price.b2cDisplayFare || price.B2CDisplayFare || price.OfferedPrice || price.offeredPrice ||
+            price.PublishedPrice || price.publishedPrice || 0
+          );
+          
+          let roomMarkup = Number(price.AgentMarkUp ?? price.agentMarkUp ?? price.agentMarkup ?? 0);
+          let roomBase = 0;
+          let roomTax = 0;
+
+          const supplierPricing = room.SupplierPricing || room.supplierPricing;
+          const supplierTotal = Number(supplierPricing?.TotalPrice ?? supplierPricing?.totalPrice ?? 0);
+          
+          if (supplierPricing && supplierTotal > 0) {
+              const supplierBase = Number(supplierPricing.BasePrice ?? supplierPricing.basePrice ?? 0);
+              
+              if (!isAgent) {
+                  const hiddenMarkup = rawTotal - supplierTotal;
+                  roomBase = supplierBase + hiddenMarkup;
+                  roomMarkup = 0;
+              } else {
+                  roomBase = supplierBase;
+              }
+              
+              roomTax = rawTotal - roomBase - roomMarkup;
+          } else {
+              // Legacy fallback
+              roomBase = Number(
+                room.B2CBasePrice || room.b2CBasePrice ||
+                price.B2CBasePrice || price.b2cBasePrice ||
+                price.RoomPrice || price.roomPrice || price.PublishedPrice || price.publishedPrice || 0
+              );
+              const gst = price.GST || price.gst || {};
+              const gstBreakupTotal = [
+                gst.CGSTAmount, gst.cgstAmount, gst.SGSTAmount, gst.sgstAmount,
+                gst.IGSTAmount, gst.igstAmount, gst.CessAmount, gst.cessAmount
+              ].reduce((sum, value) => sum + (Number(value) || 0), 0);
+              
+              const totalGstAmount = Number(price.TotalGSTAmount ?? price.totalGSTAmount ?? 0);
+              const declaredTax = Number(price.Tax ?? price.tax ?? 0);
+              roomTax = totalGstAmount || declaredTax || gstBreakupTotal;
+              
+              if (!isAgent) {
+                  roomBase = Number(price.b2CBasePrice ?? price.b2cBasePrice ?? (roomBase + roomMarkup));
+                  roomMarkup = 0;
+              }
+          }
+          
+          basePrice += roomBase;
+          tax += roomTax;
+          markupValue += roomMarkup;
+          couponDiscount += Number(price.CouponDiscount ?? price.couponDiscount ?? 0);
+          convenienceFee += Number(price.ConvenienceFee ?? price.convenienceFee ?? 0);
+          finalPayable += Number(rawTotal);
+      });
+  } else if (offer) {
+      // Use the selected offer's price until blockRoom confirms the final rate
+      const rawTotal = Number(offer.price ?? 0);
+      if (offer.originalPrice) {
+          const op = offer.originalPrice;
+          let markup = Number(op.AgentMarkUp ?? op.agentMarkUp ?? op.agentMarkup ?? 0);
+          
+          const supplierPricing = offer.SupplierPricing || offer.supplierPricing;
+          const supplierTotal = Number(supplierPricing?.TotalPrice ?? supplierPricing?.totalPrice ?? 0);
+          
+          if (supplierPricing && supplierTotal > 0) {
+              const supplierBase = Number(supplierPricing.BasePrice ?? supplierPricing.basePrice ?? 0);
+              
+              if (!isAgent) {
+                  const hiddenMarkup = rawTotal - supplierTotal;
+                  basePrice = supplierBase + hiddenMarkup;
+                  markup = 0;
+              } else {
+                  basePrice = supplierBase;
+              }
+              
+              tax = rawTotal - basePrice - markup;
+          } else {
+              // Legacy fallback
+              tax = Number(op.Tax ?? op.tax ?? op.TotalGSTAmount ?? op.totalGSTAmount ?? 0);
+              basePrice = Number(op.RoomPrice ?? op.roomPrice ?? op.PublishedPrice ?? op.publishedPrice ?? 0);
+              
+              if (!isAgent) {
+                  basePrice = Number(op.b2CBasePrice ?? op.b2cBasePrice ?? (basePrice + markup));
+                  markup = 0;
+              }
+          }
+
+          markupValue = markup;
+          couponDiscount = Number(op.CouponDiscount ?? op.couponDiscount ?? 0);
+          convenienceFee = Number(op.ConvenienceFee ?? op.convenienceFee ?? 0);
+          
+          finalPayable = rawTotal;
+      } else {
+          basePrice = offerPrice > 0 ? offerPrice : 0;
+          finalPayable = basePrice;
+      }
+  }
+  // If no offer selected and no blocked rooms, all prices remain 0 — UI shows "Select a room"
+
+  // Fallback for manual markup if backend didn't provide AgentMarkUp and user is not an agent
+  if (markupValue === 0 && !isAgent) {
+      const rawMarkup = localStorage.getItem("b2b_markup_settings");
+      if (rawMarkup) {
+          try {
+              const parsedMarkup = JSON.parse(rawMarkup);
+              if (parsedMarkup.hotelType === "percentage") {
+                  markupValue = basePrice * (Number(parsedMarkup.hotelValue) / 100);
+              } else if (parsedMarkup.hotelType === "fixed") {
+                  markupValue = Number(parsedMarkup.hotelValue) * Number(roomsCount);
+              }
+              finalPayable += markupValue; // Add to final payable if calculated manually
+          } catch (e) {}
+      }
+  }
+
+  const tierDiscount = 0;
+  const volumeDiscount = 0;
+  const isPrimaryAdultValid = useMemo(() => {
+    const primary = guests[0];
+    if (!primary) return false;
+    const fullNameOk = !!primary.fullName?.trim();
+    const ageOk = !!primary.age && Number(primary.age) >= 18;
+    const genderOk = !!primary.gender;
+    const emailOk = !!primary.email?.trim() && isValidEmail(primary.email);
+    const phoneOk = !!primary.mobile?.trim() && isValidMobile(primary.mobile);
+    return fullNameOk && ageOk && genderOk && emailOk && phoneOk;
+  }, [guests]);
+
+  const selectExistingTraveler = (travelerId) => {
+    setSelectedTravelerId(travelerId);
+    const found = savedTravelers.find((traveler) => String(traveler.id) === travelerId);
+    if (!travelerId || !found) return;
+    applyTravellerToGuest(found, 0);
+  };
+
+  const validateForm = () => {
+    const nextErrors = {};
+    
+    // Primary Adult
+    const primary = guests[0];
+    if (!primary) return false;
+
+    if (!primary.fullName?.trim()) {
+      nextErrors.guest_0_fullName = "Full name is required.";
+    }
+    if (!primary.age) {
+      nextErrors.guest_0_age = "Please enter age.";
+    } else if (Number(primary.age) < 18) {
+      nextErrors.guest_0_age = "Primary guest must be 18 years or older.";
+    }
+    if (!primary.gender) {
+      nextErrors.guest_0_gender = "Please select gender.";
+    }
+    const primaryTitleGenderError = getTitleGenderError(primary.title, primary.gender);
+    if (primaryTitleGenderError) {
+      nextErrors.guest_0_titleGender = primaryTitleGenderError;
+    }
+    if (!primary.email?.trim()) {
+      nextErrors.guest_0_email = "Please enter email.";
+    } else if (!isValidEmail(primary.email)) {
+      nextErrors.guest_0_email = "Enter a valid email.";
+    }
+    if (!primary.mobile?.trim()) {
+      nextErrors.guest_0_mobile = "Please enter phone number.";
+    } else if (!isValidMobile(primary.mobile)) {
+      nextErrors.guest_0_mobile = "Enter a valid mobile.";
+    }
+
+    // Co-Travelers validation (mandatory for children, optional for additional adults)
+    guests.forEach((guest, idx) => {
+      if (idx > 0) {
+        if (guest.type === "child") {
+          if (!guest.title) {
+            nextErrors[`guest_${idx}_title`] = "Select title.";
+          }
+          if (!guest.fullName?.trim()) {
+            nextErrors[`guest_${idx}_fullName`] = "Full name is required.";
+          }
+          if (!guest.age) {
+            nextErrors[`guest_${idx}_age`] = "Enter child age.";
+          }
+        } else {
+          if (guest.firstName?.trim() || guest.lastName?.trim()) {
+            if (!guest.title) {
+              nextErrors[`guest_${idx}_title`] = "Select title.";
+            }
+            if (!guest.fullName?.trim()) {
+              nextErrors[`guest_${idx}_fullName`] = "Full name is required.";
+            }
+            if (!guest.age) {
+              nextErrors[`guest_${idx}_age`] = "Enter age.";
+            }
+            if (!guest.gender) {
+              nextErrors[`guest_${idx}_gender`] = "Select gender.";
+            }
+          }
+        }
+      }
+      const titleGenderError = getTitleGenderError(guest.title, guest.gender);
+      if (titleGenderError && (guest.fullName?.trim() || guest.type === "child")) {
+        nextErrors[`guest_${idx}_titleGender`] = titleGenderError;
+      }
+    });
+
+    if (!agreedToAll) {
+      nextErrors.agreedToAll = "Please review selection and check the agreement box to proceed.";
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (currentStep !== 2) return undefined;
+
+    const normalizeHotelPromoRecord = (record) => {
+      const code = String(record?.couponCode || record?.CouponCode || record?.code || record?.Code || record?.promoCode || record?.PromoCode || "").trim();
+      const serviceType = String(record?.bookingType || record?.BookingType || record?.serviceType || record?.ServiceType || "").toLowerCase();
+      const category = String(record?.category || record?.Category || record?.promotionCategory || record?.PromotionCategory || "").toLowerCase();
+      const title = record?.title || record?.Title || record?.remark || record?.Remark || record?.description || record?.Description || code || "Hotel offer";
+      const value = Number(record?.value ?? record?.Value ?? record?.discountValue ?? record?.DiscountValue ?? record?.couponValue ?? record?.CouponValue ?? record?.amount ?? record?.Amount ?? 0);
+      const statusValue = String(record?.status ?? record?.Status ?? "active").toLowerCase();
+      const isActive = record?.isActive ?? record?.IsActive ?? record?.isCouponActive ?? record?.IsCouponActive ?? (statusValue !== "inactive");
+      const expiryDate = record?.expiryDate || record?.ExpiryDate || record?.endDateUtc || record?.EndDateUtc || record?.couponExpiresAtUtc || record?.CouponExpiresAtUtc;
+
+      return {
+        id: record?.id ?? record?.Id ?? record?.offerId ?? record?.OfferId ?? (code || `${title}-${expiryDate || "hotel"}`),
+        couponCode: code,
+        title,
+        description: record?.description || record?.Description || record?.remark || record?.Remark || "",
+        value,
+        couponType: record?.couponType || record?.CouponType || record?.discountType || record?.DiscountType || "Fixed",
+        expiryDate,
+        category,
+        bookingType: serviceType,
+        isActive: Boolean(isActive),
+      };
+    };
+
+    const loadHotelPromos = async () => {
+      setIsLoadingCoupons(true);
+      setIsLoadingOffers(true);
+
+      try {
+        const [couponRecords, offerRecords] = await Promise.all([
+          fetchCouponsAndOffers({ serviceType: "hotel", category: "Coupon" }),
+          fetchCouponsAndOffers({ serviceType: "hotel", category: "Offer" }),
+        ]);
+        const coupons = (Array.isArray(couponRecords) ? couponRecords : [])
+          .map(normalizeHotelPromoRecord)
+          .filter((item) => item.couponCode && item.isActive);
+        const offers = (Array.isArray(offerRecords) ? offerRecords : [])
+          .map(normalizeHotelPromoRecord)
+          .filter((item) => item.isActive);
+
+        if (isMounted) {
+          setAvailableCoupons(coupons.slice(0, 8));
+          setFeaturedOffers(offers.slice(0, 8));
+        }
+      } catch (error) {
+        console.error("Failed to load hotel coupons and offers", error);
+        if (isMounted) {
+          setAvailableCoupons([]);
+          setFeaturedOffers([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingCoupons(false);
+          setIsLoadingOffers(false);
+        }
+      }
+    };
+
+    loadHotelPromos();
+    return () => { isMounted = false; };
+  }, [currentStep]);
+
+  const handleContinue = () => {
+    if (!validateForm()) { 
+      setFormError("Please correct the highlighted guest details."); 
+      return; 
+    }
+
+    const hotelImg = hotel?.image || hotel?.cardImage || (Array.isArray(hotel?.images) ? hotel.images[0] : null) || offer?.image || null;
+    const hotelImgs = Array.isArray(hotel?.images) && hotel.images.length > 0 ? hotel.images : (hotelImg ? [hotelImg] : []);
+
+    const activeCheckIn = offer?.checkInDate || checkInDate || searchContext?.checkInDate || hotel?.checkInDate;
+    const activeCheckOut = offer?.checkOutDate || checkOutDate || searchContext?.checkOutDate || hotel?.checkOutDate;
+
+    const payloadState = { 
+      hotel, 
+      offer, 
+      hotelImage: hotelImg,
+      hotelImages: hotelImgs,
+      checkInDate: activeCheckIn,
+      checkOutDate: activeCheckOut,
+      searchContext, 
+      guestTitle: guests[0]?.title || "Mr",
+      guestName: guests[0]?.fullName?.trim() || "Primary Guest", 
+      guestEmail: guests[0]?.email?.trim() || "", 
+      guestPhone: guests[0]?.mobile?.trim() || "", 
+      guestAge: guests[0]?.age || 26,
+      guests, 
+      agreedToTerms, 
+      blockRoomResponse,
+      currentStep,
+      selectedMultiRooms,
+      payableAmount: finalPayable, 
+      fareSummary: { 
+        baseFare: basePrice, 
+        tax, 
+        convenienceFee, 
+        markup: markupValue, 
+        couponDiscount, 
+        tierDiscount: 0, 
+        volumeDiscount: 0, 
+        totalFare: finalPayable 
+      } 
+    };
+
+    // Save in-progress state FIRST
+    writeHotelBookingFlowState(payloadState);
+
+    const currentParams = new URLSearchParams(location.search);
+    currentParams.set("autoContinue", "true");
+    const nextRoute = `/hotel/passenger-details?${currentParams.toString()}`;
+
+    const authenticated = navigateWithAuth({
+      navigate,
+      location,
+      nextRoute,
+      bookingContext: { autoContinue: true, ...payloadState },
+      bookingType: "hotel",
+    });
+
+    if (!authenticated) {
+      return; 
+    }
+
+    setCheckoutPayload(payloadState);
+    setIsModalOpen(true);
+  };
+  const handleApplyCoupon = async (overrideCode = couponCode) => {
+    const nextCode = String(overrideCode || couponCode || "").trim();
+    if (!nextCode) return;
+    setIsApplyingCoupon(true);
+    setCouponError("");
+    setCouponSuccess("");
+    try {
+      const uppercaseCode = nextCode.toUpperCase();
+      setCouponCode(uppercaseCode);
+      // Wait for re-selection with the new coupon code to re-trigger blockRoom
+      await handleSelectOffer(offer, uppercaseCode);
+      
+      // Look at the new block room response to verify coupon success
+      // We rely on the React state update loop to populate couponDiscount, 
+      // but if the API returns blockRoomResponse with couponDiscount > 0 on the next render, it's successful.
+      // We can also just set a generic success message.
+      setCouponSuccess(`Coupon "${uppercaseCode}" applied! Check the breakdown below.`);
+    } catch (err) {
+      setCouponError(err.message || "Failed to apply coupon.");
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
+  const handleCopyPromoCode = async (code) => {
+    if (!code || !navigator.clipboard?.writeText) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedPromoCode(code);
+      window.setTimeout(() => setCopiedPromoCode(""), 1800);
+    } catch (error) {
+      console.error("Unable to copy hotel promo code", error);
+    }
+  };
+
+  const scrollHotelPromoCarousel = (carouselRef, direction) => {
+    const carousel = carouselRef.current;
+    if (!carousel) return;
+    carousel.scrollBy({ left: direction * carousel.clientWidth, behavior: "smooth" });
+  };
+
+  const handleRemoveCoupon = async () => {
+    setCouponCode("");
+    setCouponSuccess("");
+    setCouponError("");
+    setIsApplyingCoupon(true);
+    try {
+      // Re-block room without coupon
+      await handleSelectOffer(offer, "");
+    } catch (err) {
+      console.error("Error removing coupon", err);
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
+  if (!hotel) {
+    return (
+      <main className="hotel-checkout-page">
+        <div className="hotel-checkout-shell hotel-checkout-shell--empty">
+          <section className="hotel-checkout-empty">
+            <h2>Stay details missing</h2>
+            <p>Select a stay before entering guest details.</p>
+            <button type="button" onClick={() => navigate("/search/hotels")}>Go to hotel search</button>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  if (isLoadingOffer) {
+    return (
+      <main className="hotel-checkout-page">
+        <div className="hotel-checkout-shell hotel-checkout-shell--empty">
+          <section className="hotel-checkout-empty" style={{ background: "transparent", border: "none", boxShadow: "none", padding: 0 }}>
+            <HotelDetailsPremiumLoader />
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  const handleSetCurrentStep = (step) => {
+    if (step === 2) {
+      const nextParams = new URLSearchParams(location.search);
+      nextParams.set("autoStep2", "true");
+      const nextRoute = `/hotel/passenger-details?${nextParams.toString()}`;
+      
+      const canProceed = navigateWithAuth({
+        navigate,
+        location,
+        nextRoute,
+        bookingContext: { hotel, offer, searchContext },
+        bookingType: "hotel"
+      });
+      
+      if (!canProceed) return;
+    }
+    setCurrentStep(step);
+  };
+
+  const guestSummary = `${roomsCount} Room${roomsCount > 1 ? "s" : ""}, ${totalAdults} Adult${totalAdults > 1 ? "s" : ""}${totalChildren > 0 ? `, ${totalChildren} Child${totalChildren > 1 ? "ren" : ""}` : ""}`;
+  const stayLocation = hotel.address || [hotel.area, hotel.city].filter(Boolean).join(", ");
+  return (
+    <main className="hotel-checkout-page">
+
+      <div className="hotel-checkout-shell">
+        
+        {/* Top bar removed as per user request */}
+
+        {currentStep === 1 ? (
+          <HotelDetail
+            hotel={hotel}
+            offer={offer}
+            roomsCount={roomsCount}
+            selectedMultiRooms={selectedMultiRooms}
+            selectingOfferId={selectingOfferId}
+            handleSelectOffer={handleSelectOffer}
+            formatCurrency={formatCurrency}
+            formatNightLabel={formatNightLabel}
+            toDisplayDate={toDisplayDate}
+            checkInDate={checkInDate}
+            checkOutDate={checkOutDate}
+            guestSummary={guestSummary}
+            basePrice={basePrice}
+            tax={tax}
+            finalPayable={finalPayable}
+            convenienceFee={convenienceFee}
+            setCurrentStep={handleSetCurrentStep}
+            gallery={gallery}
+            activeImageTab={activeImageTab}
+            setActiveImageTab={setActiveImageTab}
+            displayedImages={displayedImages}
+            stayLocation={stayLocation}
+            stayFacts={stayFacts}
+            stayHighlights={stayHighlights}
+            visuals={visuals}
+            nights={nights}
+          />
+        ) : (
+          <div className="hotel-checkout-layout">
+            
+            {/* Left Column Content */}
+            <div className="hotel-checkout-main">
+              {/* Hotel Summary Card (Search Result Style) */}
+              <div style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: "20px", padding: "16px", border: "1px solid rgba(0,0,0,0.06)", borderRadius: "20px", background: "#fff", boxShadow: "0 4px 15px rgba(0,0,0,0.02)" }}>
+                <div style={{ width: "100%", height: "110px", borderRadius: "14px", overflow: "hidden" }}>
+                  <img src={gallery[0]} alt={hotel.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                  <div>
+                    <span style={{ 
+                      textTransform: "uppercase", 
+                      fontSize: "0.62rem", 
+                      fontWeight: 800, 
+                      color: "var(--hotel-rose)", 
+                      background: "rgba(220,30,38,0.05)", 
+                      padding: "3px 8px", 
+                      borderRadius: "4px", 
+                      display: "inline-block", 
+                      letterSpacing: "0.5px",
+                      marginBottom: "6px"
+                    }}>
+                      {visuals.propertyLabel || "PREMIUM STAY"}
+                    </span>
+                    <h3 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800, color: "var(--hotel-ink)" }}>{hotel.name}</h3>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "0.78rem", color: "var(--hotel-muted)", marginTop: "4px" }}>
+                      {hotel.rating > 0 && (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}>
+                          <span style={{ color: "#ffb000" }}>★</span> <strong>{Number(hotel.rating).toFixed(1)}</strong>
+                        </span>
+                      )}
+                      <span>📍 {stayLocation}</span>
+                      <span>📅 {formatNightLabel(nights)}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
+                    {stayFacts.map((fact) => (
+                      <span key={fact} style={{ fontSize: "0.72rem", padding: "2px 8px", borderRadius: "6px", background: "rgba(0,0,0,0.03)", color: "var(--hotel-ink)" }}>
+                        {fact}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              {/* Primary Guest Form Card */}
+              <section className="hotel-panel" style={{ padding: "24px", borderRadius: "20px", background: "#fff", border: "1px solid rgba(0,0,0,0.06)" }}>
+                <div className="form-title-section" style={{ borderBottom: "1px solid #f1f5f9", paddingBottom: "14px", marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800, color: "var(--hotel-ink)" }}>Primary Guest Details</h3>
+                    <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "var(--hotel-muted)", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ color: "#10b981" }}>🛡️</span> Booking confirmation and payment receipt will be sent to this guest.
+                    </p>
+                  </div>
+                  <span className="form-title-badge">Primary Guest</span>
+                </div>
+
+                {/* Dynamic counts summary panel if multiple rooms are selected */}
+                {roomsCount > 1 && (
+                  <div style={{ display: "flex", gap: "12px", background: "#f8fafc", padding: "10px 12px", borderRadius: "10px", border: "1px solid rgba(220,30,38,0.08)", marginBottom: "16px", fontSize: "0.8rem", color: "var(--hotel-ink)", alignItems: "center" }}>
+                    <span>👥 <strong>Guest Count for {roomsCount} Rooms:</strong></span>
+                    <span style={{ background: "#fff", padding: "2px 8px", borderRadius: "6px", border: "1px solid rgba(0,0,0,0.04)" }}><strong>Adults:</strong> {totalAdults}</span>
+                    {totalChildren > 0 && (
+                      <span style={{ background: "#fff", padding: "2px 8px", borderRadius: "6px", border: "1px solid rgba(0,0,0,0.04)" }}><strong>Children:</strong> {totalChildren}</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Checkbox selector container for saved profiles */}
+                <div style={{ marginBottom: "10px", padding: "6px 10px", background: "#f8fafc", borderRadius: "8px", border: "1px solid rgba(0,0,0,0.04)" }}>
+                  <label style={{ display: "inline-flex", alignItems: "center", justifyContent: "flex-start", gap: "10px", fontSize: "0.85rem", fontWeight: 600, color: "var(--hotel-ink)", cursor: "pointer", margin: 0, width: "100%" }}>
+                    <input 
+                      type="checkbox" 
+                      checked={isExistingGuest} 
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setIsExistingGuest(checked);
+                        if (!checked) {
+                          setSelectedTravelerId("");
+                          selectExistingTraveler("");
+                        }
+                      }}
+                      style={{ margin: 0, width: "16px", height: "16px" }}
+                    />
+                    <span style={{ whiteSpace: "nowrap" }}>Book using a saved traveler profile</span>
+                  </label>
+                  
+                  {isExistingGuest && (
+                    <div className="hotel-traveler-picker" style={{ marginTop: "6px", display: "flex", flexDirection: "column", gap: "3px" }}>
+                      <select 
+                        id="hotel-existing-traveler" 
+                        value={selectedTravelerId} 
+                        onChange={(event) => selectExistingTraveler(event.target.value)} 
+                        style={{ height: "28px", padding: "2px 6px", borderRadius: "6px", border: "1px solid #cbd5e1", width: "100%", maxWidth: "260px", fontSize: "0.76rem" }}
+                      >
+                        <option value="">Choose profile</option>
+                        {savedTravelers.map((traveler) => (
+                          <option key={traveler.id} value={String(traveler.id)}>
+                            {[traveler.title, traveler.firstName, traveler.lastName].filter(Boolean).join(" ")}
+                          </option>
+                        ))}
+                      </select>
+                      {travelerLoadError && <p className="hotel-helper hotel-helper--warning" style={{ margin: 0, color: "red", fontSize: "0.72rem" }}>{travelerLoadError}</p>}
+                    </div>
+                  )}
+                </div>
+
+                <div className="guest-form-grid" style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "16px" }}>
+                  {/* Title */}
+                  <div className="floating-field" style={{ gridColumn: "span 1" }}>
+                    <label style={{ fontSize: "0.75rem", color: "var(--hotel-muted)", fontWeight: 700, display: "block", marginBottom: "6px" }}>Title <span style={{ color: "red" }}>*</span></label>
+                    <select
+                      value={guests[0]?.title || ""}
+                      onChange={(e) => updateGuest(0, "title", e.target.value)}
+                      className={errors.guest_0_title ? "is-error" : ""}
+                      style={{ width: "100%", height: "42px", padding: "8px 12px", borderRadius: "10px", border: "1px solid #cbd5e1" }}
+                    >
+                      <option value="">Select</option>
+                      <option value="Mr">Mr.</option>
+                      <option value="Ms">Ms.</option>
+                      <option value="Mrs">Mrs.</option>
+                      <option value="Dr">Dr.</option>
+                    </select>
+                    {errors.guest_0_title && <span className="field-error" style={{ color: "red", fontSize: "0.72rem", display: "block", marginTop: "4px" }}>{errors.guest_0_title}</span>}
+                    {errors.guest_0_titleGender && <span className="field-error" style={{ color: "red", fontSize: "0.72rem", display: "block", marginTop: "4px" }}>{errors.guest_0_titleGender}</span>}
+                  </div>
+
+                  {/* Full Name */}
+                  <div className="floating-field" style={{ gridColumn: "span 3" }}>
+                    <label style={{ fontSize: "0.75rem", color: "var(--hotel-muted)", fontWeight: 700, display: "block", marginBottom: "6px" }}>Full Name <span style={{ color: "red" }}>*</span></label>
+                    <input
+                      type="text"
+                      placeholder="Enter full name"
+                      value={guests[0]?.fullName || ""}
+                      onChange={(e) => updateGuest(0, "fullName", e.target.value)}
+                      className={errors.guest_0_fullName ? "is-error" : ""}
+                      style={{ width: "100%", height: "42px", padding: "8px 12px", borderRadius: "10px", border: "1px solid #cbd5e1", textTransform: "capitalize" }}
+                    />
+                    {errors.guest_0_fullName && <span className="field-error" style={{ color: "red", fontSize: "0.72rem", display: "block", marginTop: "4px" }}>{errors.guest_0_fullName}</span>}
+                  </div>
+
+                  {/* Gender */}
+                  <div className="floating-field" style={{ gridColumn: "span 1" }}>
+                    <label style={{ fontSize: "0.75rem", color: "var(--hotel-muted)", fontWeight: 700, display: "block", marginBottom: "6px" }}>Gender <span style={{ color: "red" }}>*</span></label>
+                    <select
+                      value={guests[0]?.gender || "Male"}
+                      onChange={(e) => updateGuest(0, "gender", e.target.value)}
+                      className={errors.guest_0_gender ? "is-error" : ""}
+                      style={{ width: "100%", height: "42px", padding: "8px 12px", borderRadius: "10px", border: "1px solid #cbd5e1" }}
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                    {errors.guest_0_gender && <span className="field-error" style={{ color: "red", fontSize: "0.72rem", display: "block", marginTop: "4px" }}>{errors.guest_0_gender}</span>}
+                    {errors.guest_0_titleGender && <span className="field-error" style={{ color: "red", fontSize: "0.72rem", display: "block", marginTop: "4px" }}>{errors.guest_0_titleGender}</span>}
+                  </div>
+
+                  {/* Age */}
+                  <div className="floating-field" style={{ gridColumn: "span 1" }}>
+                    <label style={{ fontSize: "0.75rem", color: "var(--hotel-muted)", fontWeight: 700, display: "block", marginBottom: "6px" }}>Age <span style={{ color: "red" }}>*</span></label>
+                    <input
+                      type="number"
+                      placeholder="Age"
+                      value={guests[0]?.age || ""}
+                      onChange={(e) => updateGuest(0, "age", e.target.value)}
+                      className={errors.guest_0_age ? "is-error" : ""}
+                      style={{ width: "100%", height: "42px", padding: "8px 12px", borderRadius: "10px", border: "1px solid #cbd5e1" }}
+                    />
+                    {errors.guest_0_age && <span className="field-error" style={{ color: "red", fontSize: "0.72rem", display: "block", marginTop: "4px" }}>{errors.guest_0_age}</span>}
+                  </div>
+
+                  {/* Email */}
+                  <div className="floating-field" style={{ gridColumn: "span 2" }}>
+                    <label style={{ fontSize: "0.75rem", color: "var(--hotel-muted)", fontWeight: 700, display: "block", marginBottom: "6px" }}>Email Address <span style={{ color: "red" }}>*</span></label>
+                    <input
+                      type="email"
+                      placeholder="Enter email address"
+                      value={guests[0]?.email || ""}
+                      onChange={(e) => updateGuest(0, "email", e.target.value)}
+                      className={errors.guest_0_email ? "is-error" : ""}
+                      style={{ width: "100%", height: "42px", padding: "8px 12px", borderRadius: "10px", border: "1px solid #cbd5e1" }}
+                    />
+                    {errors.guest_0_email && <span className="field-error" style={{ color: "red", fontSize: "0.72rem", display: "block", marginTop: "4px" }}>{errors.guest_0_email}</span>}
+                  </div>
+
+                  {/* Mobile */}
+                  <div className="floating-field" style={{ gridColumn: "span 2" }}>
+                    <label style={{ fontSize: "0.75rem", color: "var(--hotel-muted)", fontWeight: 700, display: "block", marginBottom: "6px" }}>Mobile Number <span style={{ color: "red" }}>*</span></label>
+                    <input
+                      type="tel"
+                      placeholder="10-digit mobile number"
+                      value={guests[0]?.mobile || ""}
+                      onChange={(e) => updateGuest(0, "mobile", e.target.value)}
+                      className={errors.guest_0_mobile ? "is-error" : ""}
+                      style={{ width: "100%", height: "42px", padding: "8px 12px", borderRadius: "10px", border: "1px solid #cbd5e1" }}
+                    />
+                    {errors.guest_0_mobile && <span className="field-error" style={{ color: "red", fontSize: "0.72rem", display: "block", marginTop: "4px" }}>{errors.guest_0_mobile}</span>}
+                  </div>
+
+                </div>
+              </section>
+
+              {/* Optional Co-Traveler Details Dropdown */}
+              {guests.length > 1 && (
+                <section className="hotel-panel" style={{ padding: "0", borderRadius: "20px", background: "#fff", border: "1px solid rgba(0,0,0,0.06)" }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsOtherGuestsOpen((current) => !current)}
+                    style={{
+                      width: "100%",
+                      background: "transparent",
+                      border: "none",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "20px 24px",
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                  >
+                    <span style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--hotel-ink)" }}>Other Guest Details</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                      <span
+                        style={{
+                          fontSize: "0.78rem",
+                          fontWeight: 700,
+                          color: "#475569",
+                          background: "#f1f5f9",
+                          borderRadius: "999px",
+                          padding: "6px 12px",
+                          lineHeight: 1,
+                        }}
+                      >
+                        Optional
+                      </span>
+                      <span style={{ fontSize: "1.1rem", color: "#64748b", transform: isOtherGuestsOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>
+                        ▾
+                      </span>
+                    </span>
+                  </button>
+
+                  {isOtherGuestsOpen && (
+                    <div style={{ padding: "0 24px 24px" }}>
+                      {guests.slice(1).map((guest, index) => {
+                        const actualIdx = index + 1;
+                        return (
+                          <div key={guest.index} style={{ border: "1px solid #f1f5f9", borderRadius: "12px", padding: "16px", marginBottom: "12px", background: "#fcfdfe" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                              <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--hotel-ink)" }}>
+                                Traveler #{actualIdx + 1} ({guest.type === "adult" ? "Adult" : "Child"})
+                              </span>
+                              <span style={{ fontSize: "0.7rem", color: guest.type === "child" ? "var(--hotel-rose)" : "#64748b", background: guest.type === "child" ? "rgba(220,30,38,0.05)" : "#f1f5f9", padding: "2px 8px", borderRadius: "6px", fontWeight: 600 }}>
+                                {guest.type === "child" ? "Mandatory" : "Optional"}
+                              </span>
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: guest.type === "child" ? "100px 1.5fr 1fr" : "100px 1.5fr 1fr 1fr", gap: "12px" }}>
+                              <div>
+                                <label style={{ fontSize: "0.7rem", color: "var(--hotel-muted)", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                                  Title {guest.type === "child" && <span style={{ color: "red" }}>*</span>}
+                                </label>
+                                <select
+                                  value={guest.title || ""}
+                                  onChange={(e) => updateGuest(actualIdx, "title", e.target.value)}
+                                  style={{ width: "100%", height: "38px", padding: "6px 10px", borderRadius: "8px", border: errors[`guest_${actualIdx}_title`] ? "1.5px solid red" : "1px solid #cbd5e1" }}
+                                >
+                                  <option value="">Select</option>
+                                  {guest.type === "child" ? (
+                                    <>
+                                      <option value="Mstr">Mstr</option>
+                                      <option value="Miss">Miss</option>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <option value="Mr">Mr.</option>
+                                      <option value="Mrs">Mrs.</option>
+                                      <option value="Ms">Ms.</option>
+                                    </>
+                                  )}
+                                </select>
+                                {errors[`guest_${actualIdx}_title`] && <span className="field-error" style={{ color: "red", fontSize: "0.68rem", display: "block", marginTop: "4px" }}>{errors[`guest_${actualIdx}_title`]}</span>}
+                                {errors[`guest_${actualIdx}_titleGender`] && <span className="field-error" style={{ color: "red", fontSize: "0.68rem", display: "block", marginTop: "4px" }}>{errors[`guest_${actualIdx}_titleGender`]}</span>}
+                              </div>
+                              <div>
+                                <label style={{ fontSize: "0.7rem", color: "var(--hotel-muted)", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                                  Full Name {guest.type === "child" && <span style={{ color: "red" }}>*</span>}
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="Name"
+                                  value={guest.fullName || ""}
+                                  onChange={(e) => updateGuest(actualIdx, "fullName", e.target.value)}
+                                  style={{ width: "100%", height: "38px", padding: "6px 10px", borderRadius: "8px", border: errors[`guest_${actualIdx}_fullName`] ? "1.5px solid red" : "1px solid #cbd5e1", textTransform: "capitalize" }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: "0.7rem", color: "var(--hotel-muted)", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                                  Age {guest.type === "child" && <span style={{ color: "red" }}>*</span>}
+                                </label>
+                                <input
+                                  type="number"
+                                  placeholder="Age"
+                                  value={guest.age || ""}
+                                  onChange={(e) => {
+                                    if (guest.type === "child") {
+                                      handleChildAgeChange(actualIdx, e.target.value);
+                                    } else {
+                                      updateGuest(actualIdx, "age", e.target.value);
+                                    }
+                                  }}
+                                  style={{ width: "100%", height: "38px", padding: "6px 10px", borderRadius: "8px", border: errors[`guest_${actualIdx}_age`] ? "1.5px solid red" : "1px solid #cbd5e1" }}
+                                />
+                              </div>
+                              {guest.type === "adult" && (
+                                <div>
+                                  <label style={{ fontSize: "0.7rem", color: "var(--hotel-muted)", fontWeight: 700, display: "block", marginBottom: "4px" }}>Gender</label>
+                                  <select
+                                    value={guest.gender || "Male"}
+                                    onChange={(e) => updateGuest(actualIdx, "gender", e.target.value)}
+                                    style={{ width: "100%", height: "38px", padding: "6px 10px", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+                                  >
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                  </select>
+                                  {errors[`guest_${actualIdx}_gender`] && <span className="field-error" style={{ color: "red", fontSize: "0.68rem", display: "block", marginTop: "4px" }}>{errors[`guest_${actualIdx}_gender`]}</span>}
+                                  {errors[`guest_${actualIdx}_titleGender`] && <span className="field-error" style={{ color: "red", fontSize: "0.68rem", display: "block", marginTop: "4px" }}>{errors[`guest_${actualIdx}_titleGender`]}</span>}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              )}
+
+
+              {/* Review Selection Container */}
+              <section className="hotel-panel" style={{ padding: "20px", borderRadius: "20px", background: "#fff", border: "1px solid rgba(0,0,0,0.06)", marginBottom: "20px" }}>
+                <h3 style={{ margin: "0 0 12px 0", fontSize: "1rem", fontWeight: 800, color: "var(--hotel-ink)" }}>Review Stay & Guest Details</h3>
+                
+                <div style={{ background: "#f8fafc", padding: "14px", borderRadius: "12px", fontSize: "0.82rem", color: "var(--hotel-muted)", display: "flex", flexDirection: "column", gap: "10px", marginBottom: "16px", border: "1px solid rgba(0,0,0,0.03)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>🏨 <strong>Hotel:</strong></span>
+                    <span style={{ color: "var(--hotel-ink)", fontWeight: 700 }}>{hotel.name}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <span>🛏️ <strong>Selected Room:</strong></span>
+                    <div style={{ textAlign: "right" }}>
+                      <span style={{ display: "block", color: "var(--hotel-ink)", fontWeight: 700 }}>
+                        {offer?.roomCategory ? offer.roomCategory.split(",")[0].trim().replace(/_/g, " ") : ""}
+                      </span>
+                      {offer?.roomCategory && offer.roomCategory.includes(",") && (
+                        <span style={{ display: "block", fontSize: "0.74rem", color: "var(--hotel-muted)", marginTop: "2px" }}>
+                          {offer.roomCategory.split(",").slice(1).join(", ").trim().replace(/_/g, " ")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>📅 <strong>Stay Period:</strong></span>
+                    <span style={{ color: "var(--hotel-ink)", fontWeight: 700 }}>
+                      {checkInDate ? toDisplayDate(String(checkInDate).split("T")[0]) : ""} to {checkOutDate ? toDisplayDate(String(checkOutDate).split("T")[0]) : ""} ({nights} {nights > 1 ? "Nights" : "Night"})
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>👤 <strong>Primary Guest:</strong></span>
+                    <span style={{ color: "var(--hotel-ink)", fontWeight: 700 }}>
+                      {guests[0]?.fullName ? `${guests[0].title || ""} ${guests[0].fullName}`.trim() : ""}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(0,0,0,0.06)", paddingTop: "10px", marginTop: "4px" }}>
+                    <span>💰 <strong>Total Amount:</strong></span>
+                    <strong style={{ color: "#10b981", fontSize: "1rem" }}>{formatCurrency(finalPayable)}</strong>
+                  </div>
+                </div>
+
+                <div className="hotel-promotions-panel">
+                  <div className="hotel-promotions-heading">
+                    <h4>Offers & Coupons</h4>
+                    <span>Hotel Deals</span>
+                  </div>
+
+                  <div className="hotel-promo-entry">
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                      placeholder="Enter coupon code"
+                      aria-label="Enter hotel coupon code"
+                    />
+                    <button type="button" onClick={handleApplyCoupon} disabled={isApplyingCoupon || !couponCode.trim()}>
+                      {isApplyingCoupon ? "Applying..." : "Apply"}
+                    </button>
+                  </div>
+
+                  {(couponError || couponSuccess) && (
+                    <div className={`hotel-promo-message${couponError ? " is-error" : " is-success"}`} role="status">
+                      {couponError || couponSuccess}
+                    </div>
+                  )}
+
+                  {couponCode && (
+                    <button type="button" className="hotel-promo-remove" onClick={handleRemoveCoupon} disabled={isApplyingCoupon}>
+                      Remove applied coupon
+                    </button>
+                  )}
+
+                  {(isLoadingOffers || isLoadingCoupons) && (
+                    <div className="hotel-promo-loading"><Loader2 size={15} className="spin" /> Loading hotel promotions...</div>
+                  )}
+
+                  {featuredOffers.length > 0 && (
+                    <section className="hotel-promo-group" aria-label="Featured hotel offers">
+                      <div className="hotel-promo-group-heading">
+                        <h5>Featured Offers</h5>
+                        <div className="hotel-promo-carousel-controls">
+                          <button type="button" onClick={() => scrollHotelPromoCarousel(hotelOffersCarouselRef, -1)} disabled={featuredOffers.length < 2} aria-label="Scroll featured offers left" title="Previous offers"><ChevronLeft size={17} /></button>
+                          <button type="button" onClick={() => scrollHotelPromoCarousel(hotelOffersCarouselRef, 1)} disabled={featuredOffers.length < 2} aria-label="Scroll featured offers right" title="Next offers"><ChevronRight size={17} /></button>
+                        </div>
+                      </div>
+                      <div className="hotel-promo-card-list" ref={hotelOffersCarouselRef}>
+                        {featuredOffers.map((promo) => {
+                          const code = promo.couponCode || "";
+                          const isSelected = Boolean(code) && couponCode.toUpperCase() === code.toUpperCase();
+                          return (
+                            <article className={`hotel-promo-card${isSelected ? " is-selected" : ""}`} key={promo.id || code || promo.title}>
+                              <div className="hotel-promo-card-header">
+                                <span className="hotel-promo-discount">{getHotelPromoDiscountLabel(promo)}</span>
+                                <div className="hotel-promo-code-wrap">
+                                  <span className="hotel-promo-code">{code || "HOTEL OFFER"}</span>
+                                  {code && (
+                                    <button type="button" className="hotel-promo-copy" onClick={() => handleCopyPromoCode(code)} aria-label={`Copy ${code}`} title="Copy code">
+                                      {copiedPromoCode === code ? <Check size={14} /> : <Copy size={14} />}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="hotel-promo-card-body">
+                                <strong>{promo.title || code || "Hotel offer"}</strong>
+                                <p>{promo.description || "Use this offer on your hotel booking."}</p>
+                                <button type="button" onClick={() => handleApplyCoupon(code)} disabled={!code || isApplyingCoupon}>
+                                  {isSelected ? "Applied" : "Apply offer"}
+                                </button>
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  )}
+
+                  {availableCoupons.length > 0 && (
+                    <section className="hotel-promo-group" aria-label="Available hotel coupons">
+                      <div className="hotel-promo-group-heading">
+                        <h5>Available Coupons</h5>
+                        <div className="hotel-promo-carousel-controls">
+                          <button type="button" onClick={() => scrollHotelPromoCarousel(hotelCouponsCarouselRef, -1)} disabled={availableCoupons.length < 2} aria-label="Scroll available coupons left" title="Previous coupons"><ChevronLeft size={17} /></button>
+                          <button type="button" onClick={() => scrollHotelPromoCarousel(hotelCouponsCarouselRef, 1)} disabled={availableCoupons.length < 2} aria-label="Scroll available coupons right" title="Next coupons"><ChevronRight size={17} /></button>
+                        </div>
+                      </div>
+                      <div className="hotel-promo-card-list" ref={hotelCouponsCarouselRef}>
+                        {availableCoupons.map((promo) => {
+                          const code = promo.couponCode;
+                          const isSelected = couponCode.toUpperCase() === code.toUpperCase();
+                          return (
+                            <article className={`hotel-promo-card${isSelected ? " is-selected" : ""}`} key={promo.id || code}>
+                              <div className="hotel-promo-card-header">
+                                <span className="hotel-promo-discount">{getHotelPromoDiscountLabel(promo)}</span>
+                                <div className="hotel-promo-code-wrap">
+                                  <span className="hotel-promo-code">{code}</span>
+                                  <button type="button" className="hotel-promo-copy" onClick={() => handleCopyPromoCode(code)} aria-label={`Copy ${code}`} title="Copy code">
+                                    {copiedPromoCode === code ? <Check size={14} /> : <Copy size={14} />}
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="hotel-promo-card-body">
+                                <strong>{promo.title || code}</strong>
+                                <p>{promo.description || "Save on your hotel booking with this coupon."}</p>
+                                <button type="button" onClick={() => handleApplyCoupon(code)} disabled={isApplyingCoupon}>
+                                  {isSelected ? "Applied" : "Apply coupon"}
+                                </button>
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  )}
+                </div>
+
+                {specialRequests.length > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", background: "#f8fafc", padding: "10px 14px", borderRadius: "12px", border: "1px solid rgba(0,0,0,0.03)", fontSize: "0.82rem" }}>
+                    <span 
+                      style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", color: "var(--hotel-muted)" }}
+                      onClick={() => setShowReqPopup(true)}
+                    >
+                      ✨ <strong style={{ textDecoration: "underline", color: "var(--hotel-ink)" }}>Special Requests:</strong>
+                    </span>
+                    <span style={{ color: "var(--hotel-ink)", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span>{specialRequests.slice(0, 2).join(", ")}</span>
+                      {specialRequests.length > 2 && (
+                        <button 
+                          type="button"
+                          onClick={() => setShowReqPopup(true)}
+                          style={{
+                            background: "rgba(220, 30, 38, 0.08)",
+                            border: "1px solid rgba(220, 30, 38, 0.15)",
+                            color: "var(--hotel-rose)",
+                            padding: "2px 8px",
+                            borderRadius: "6px",
+                            fontSize: "0.74rem",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            marginLeft: "4px"
+                          }}
+                        >
+                          +{specialRequests.length - 2} more
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                )}
+
+                <label className={`hotel-checkbox ${errors.agreedToAll ? "is-error" : ""}`} style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer", fontSize: "0.82rem", fontWeight: 600, color: "var(--hotel-ink)", margin: 0 }}>
+                  <input 
+                    type="checkbox" 
+                    checked={agreedToAll} 
+                    onChange={(event) => {
+                      setAgreedToAll(event.target.checked);
+                      setErrors((current) => { const next = { ...current }; delete next.agreedToAll; return next; });
+                      setFormError("");
+                    }} 
+                  />
+                  <span>
+                    I have reviewed my hotel selection and guest info, verify they are correct, and agree to the hotel booking policy, guest rules, and cancellation terms (
+                    <span style={{ color: "var(--hotel-rose)", fontWeight: 700 }}>
+                      {offer?.cancellationPolicy || "Standard cancellation terms apply"}
+                    </span>
+                    ) for this stay.
+                  </span>
+                </label>
+                {errors.agreedToAll && <p style={{ margin: "4px 0 0 0", color: "red", fontSize: "0.74rem" }}>{errors.agreedToAll}</p>}
+                {formError && <p className="hotel-helper hotel-helper--error" style={{ margin: "8px 0 0 0", color: "red", fontSize: "0.78rem" }}>{formError}</p>}
+                {agreedToAll && (
+                  <div className="booking-action-buttons-row" style={{ display: "flex", justifyContent: "flex-end", marginTop: "12px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                      <button
+                        type="button"
+                        className="hotel-primary-button"
+                        style={{ minHeight: "44px", padding: "0 22px", borderRadius: "12px", fontWeight: 700, background: "var(--hotel-rose)" }}
+                        onClick={handleContinue}
+                      >
+                        Continue to Payment →
+                      </button>
+                      {!hasValidToken && (
+                        <span style={{ fontSize: "0.72rem", color: "var(--hotel-rose)", marginTop: "4px", fontWeight: 600 }}>
+                          * Login mandatory to pay
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </section>
+            </div>
+
+            {/* Right Column Booking Sidebar */}
+            <aside className="hotel-reserve-rail hotel-checkout-side" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              {/* Booking Summary Card */}
+              <div className="hotel-reserve-card hotel-your-stay-card" style={{ background: "var(--hotel-surface)", borderRadius: "24px", border: "1px solid var(--hotel-border)", padding: "24px", boxShadow: "var(--hotel-shadow)" }}>
+                <div className="hotel-your-stay-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(0,0,0,0.06)", paddingBottom: "14px", marginBottom: "16px" }}>
+                  <h3 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800, color: "var(--hotel-ink)" }}>Booking Summary</h3>
+                </div>
+
+                {(offer || hotel) && (
+                  <>
+                    {/* Hotel Mini details */}
+                    <div style={{ display: "grid", gridTemplateColumns: "70px 1fr", gap: "12px", marginBottom: "16px" }}>
+                      <img 
+                        src={gallery[0]} 
+                        alt={hotel.name} 
+                        style={{ width: "70px", height: "70px", borderRadius: "12px", objectFit: "cover" }} 
+                      />
+                      <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                        <h4 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "var(--hotel-ink)", lineHeight: "1.3" }}>{hotel.name}</h4>
+                        {hotel.rating > 0 && (
+                          <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.8rem", margin: "4px 0" }}>
+                            <span style={{ color: "#f59e0b" }}>★</span>
+                            <strong style={{ color: "var(--hotel-ink)" }}>{Number(hotel.rating).toFixed(1)}</strong>
+                          </div>
+                        )}
+                        <span style={{ fontSize: "0.78rem", color: "var(--hotel-muted)" }}>📍 {[hotel.city, hotel.area].filter(Boolean).join(", ")}</span>
+                      </div>
+                    </div>
+
+                    {/* Stay Dates Grid */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", background: "#f8fafc", padding: "12px", borderRadius: "14px", border: "1px solid rgba(0,0,0,0.04)", marginBottom: "16px", position: "relative" }}>
+                      <div style={{ borderRight: "1px solid rgba(0,0,0,0.06)", paddingRight: "8px" }}>
+                        <span style={{ display: "block", fontSize: "0.68rem", color: "var(--hotel-muted)", fontWeight: 700, textTransform: "uppercase" }}>Check-in</span>
+                        <strong style={{ display: "block", fontSize: "0.85rem", color: "var(--hotel-ink)", marginTop: "4px" }}>
+                          {checkInDate ? toDisplayDate(String(checkInDate).split("T")[0]) : ""}
+                        </strong>
+                      </div>
+                      <div style={{ paddingLeft: "8px" }}>
+                        <span style={{ display: "block", fontSize: "0.68rem", color: "var(--hotel-muted)", fontWeight: 700, textTransform: "uppercase" }}>Check-out</span>
+                        <strong style={{ display: "block", fontSize: "0.85rem", color: "var(--hotel-ink)", marginTop: "4px" }}>
+                          {checkOutDate ? toDisplayDate(String(checkOutDate).split("T")[0]) : ""}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* Guest Summary & Room Type info */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", borderBottom: "1px solid rgba(0,0,0,0.06)", paddingBottom: "14px", marginBottom: "14px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
+                        <span style={{ color: "var(--hotel-muted)" }}>Stay Length</span>
+                        <strong style={{ color: "var(--hotel-ink)" }}>{formatNightLabel(nights)}</strong>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
+                        <span style={{ color: "var(--hotel-muted)" }}>Guests &amp; Rooms</span>
+                        <strong style={{ color: "var(--hotel-ink)" }}>{guestSummary}</strong>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", fontSize: "0.85rem" }}>
+                        <span style={{ color: "var(--hotel-muted)" }}>Selected Room</span>
+                        <div style={{ textAlign: "right" }}>
+                          <strong style={{ display: "block", color: "var(--hotel-ink)" }}>
+                            {offer?.roomCategory ? offer.roomCategory.split(",")[0].trim().replace(/_/g, " ") : ""}
+                          </strong>
+                          {offer?.roomCategory && offer.roomCategory.includes(",") && (
+                            <span style={{ display: "block", fontSize: "0.74rem", color: "var(--hotel-muted)", marginTop: "2px" }}>
+                              {offer.roomCategory.split(",").slice(1).join(", ").trim().replace(/_/g, " ")}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="hotel-fare-breakdown" style={{ display: "flex", flexDirection: "column", gap: "10px", borderBottom: "1px solid rgba(0,0,0,0.06)", paddingBottom: "14px", marginBottom: "14px" }}>
+                      <div className="hotel-fare-row" style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "var(--hotel-muted)" }}>
+                        <span>Room base charges</span>
+                        <strong style={{ color: "var(--hotel-ink)" }}>{formatCurrency(basePrice)}</strong>
+                      </div>
+                      <div className="hotel-fare-row" style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "var(--hotel-muted)" }}>
+                        <span>Taxes & GST</span>
+                        <strong style={{ color: "var(--hotel-ink)" }}>{formatCurrency(tax)}</strong>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                      <span style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--hotel-ink)" }}>Total Price</span>
+                      <strong style={{ fontSize: "1.45rem", fontWeight: 800, color: "#10b981" }}>{formatCurrency(finalPayable)}</strong>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Need Help Card */}
+              <div className="hotel-reserve-card need-help-card" style={{ padding: "20px", borderRadius: "20px", border: "1px solid var(--hotel-border)", background: "#fff", boxShadow: "var(--hotel-shadow)" }}>
+                <h3 style={{ margin: "0 0 10px 0", fontSize: "1.05rem", fontWeight: 800, color: "var(--hotel-ink)", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span>📞</span> Need Help?
+                </h3>
+                <p style={{ margin: "0 0 14px 0", fontSize: "0.82rem", color: "var(--hotel-muted)", lineHeight: 1.5 }}>
+                  Our customer experience specialists are available 24/7 to help you with your booking.
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.85rem", color: "var(--hotel-ink)" }}>
+                    <span>📱</span> <strong>+91 98765 43210</strong>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.85rem", color: "var(--hotel-ink)" }}>
+                    <span>✉️</span> <strong>contact@picknbook.in</strong>
+                  </div>
+                </div>
+                <button 
+                  type="button" 
+                  style={{
+                    width: "100%",
+                    background: "none",
+                    border: "1px solid var(--hotel-rose)",
+                    color: "var(--hotel-rose)",
+                    borderRadius: "10px",
+                    padding: "10px 0",
+                    fontSize: "0.85rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                  onClick={() => navigate("/contact")}
+                >
+                  Contact Us
+                </button>
+              </div>
+
+            </aside>
+
+          </div>
+        )}
+
+      </div>
+
+      {showChildAgeAlert && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(0, 0, 0, 0.4)",
+          backdropFilter: "blur(4px)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 9999,
+          animation: "fadeIn 0.2s ease"
+        }}>
+          <div style={{
+            background: "#fff",
+            borderRadius: "20px",
+            width: "90%",
+            maxWidth: "450px",
+            padding: "28px",
+            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.15)",
+            textAlign: "center"
+          }}>
+            <div style={{
+              width: "56px",
+              height: "56px",
+              borderRadius: "50%",
+              background: "#fee2e2",
+              color: "#ef4444",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              fontSize: "1.8rem",
+              margin: "0 auto 16px auto"
+            }}>
+              ⚠️
+            </div>
+            <h3 style={{ margin: "0 0 10px 0", fontSize: "1.25rem", fontWeight: 800, color: "var(--hotel-ink)" }}>
+              Passenger is Considered an Adult
+            </h3>
+            <p style={{ margin: "0 0 24px 0", fontSize: "0.85rem", color: "var(--hotel-muted)", lineHeight: "1.5" }}>
+              A child aged 12 or above is classified as an adult passenger. Please return to the search filters to search for this stay with the correct adult guest count.
+            </p>
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowChildAgeAlert(false);
+                  if (alertChildIndex !== null) {
+                    updateGuest(alertChildIndex, "age", ""); // Clear the invalid age
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  height: "44px",
+                  borderRadius: "10px",
+                  border: "1px solid #cbd5e1",
+                  background: "#fff",
+                  color: "#475569",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontSize: "0.88rem"
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowChildAgeAlert(false);
+                  navigate("/");
+                }}
+                style={{
+                  flex: 1,
+                  height: "44px",
+                  borderRadius: "10px",
+                  border: "none",
+                  background: "var(--hotel-rose)",
+                  color: "#fff",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontSize: "0.88rem"
+                }}
+              >
+                Go to Search
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showReqPopup && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(0, 0, 0, 0.4)",
+          backdropFilter: "blur(4px)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 9999,
+          animation: "fadeIn 0.2s ease"
+        }} onClick={() => setShowReqPopup(false)}>
+          <div style={{
+            background: "#fff",
+            borderRadius: "20px",
+            width: "90%",
+            maxWidth: "400px",
+            padding: "24px",
+            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.15)"
+          }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ margin: "0 0 16px 0", fontSize: "1.1rem", fontWeight: 800, color: "var(--hotel-rose)", borderBottom: "1px solid rgba(0,0,0,0.06)", paddingBottom: "10px" }}>
+              Selected Special Requests
+            </h3>
+            <ul style={{ margin: 0, paddingLeft: "20px", display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.85rem", color: "var(--hotel-ink)" }}>
+              {specialRequests.map((req) => (
+                <li key={req} style={{ fontWeight: 600 }}>✓ {req}</li>
+              ))}
+            </ul>
+            <button 
+              type="button" 
+              onClick={() => setShowReqPopup(false)}
+              style={{
+                marginTop: "20px",
+                width: "100%",
+                height: "40px",
+                borderRadius: "10px",
+                background: "var(--hotel-rose)",
+                color: "#fff",
+                border: "none",
+                fontWeight: 700,
+                cursor: "pointer",
+                fontSize: "0.88rem"
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+          {isModalOpen && checkoutPayload && (
+        <BookingConfirmationModal 
+          isOpen={isModalOpen} 
+          onClose={() => setIsModalOpen(false)} 
+          bookingType="Hotel" 
+          flowState={checkoutPayload} 
+          onSuccess={async (res) => {
+            if (res.paymentMethod === "Wallet" || res.paymentMethod === "Agent Wallet") {
+              try {
+                const { guestName, guestPhone, guestEmail, blockRoomResponse, hotel, offer, checkInDate, checkOutDate } = checkoutPayload;
+                const firstName = guestName?.split(" ")[0] || "";
+                const lastName = guestName?.split(" ").slice(1).join(" ") || "";
+                const cleanPhone = String(guestPhone || "9876543210").replace(/\D/g, "").slice(-10);
+                const cleanEmail = String(guestEmail || "guest@gopickandbook.in").trim();
+                
+                const rawCheckIn = offer?.checkInDate || checkoutPayload.searchContext?.checkInDate || checkInDate || "";
+                const rawCheckOut = offer?.checkOutDate || checkoutPayload.searchContext?.checkOutDate || checkOutDate || "";
+                const checkInStr = typeof rawCheckIn === "string" ? rawCheckIn.split("T")[0] : "";
+                const checkOutStr = typeof rawCheckOut === "string" ? rawCheckOut.split("T")[0] : "";
+
+                const totalPayable = checkoutPayload?.payableAmount || checkoutPayload?.finalPayableAmount || 0;
+
+                const bookPayload = {
+                  CheckInDate: checkInStr,
+                  CheckOutDate: checkOutStr,
+                  checkInDate: checkInStr,
+                  checkOutDate: checkOutStr,
+                  TraceId: String(blockRoomResponse?.TraceId || blockRoomResponse?.traceId || hotel?.TraceId || ""),
+                  ResultIndex: String(hotel?.ResultIndex || ""),
+                  SrdvType: String(hotel?.SrdvType || "MixAPI"),
+                  SrdvIndex: String(hotel?.SrdvIndex || ""),
+                  HotelCode: String(hotel?.hotelId || hotel?.hotelCode || ""),
+                  HotelName: hotel?.name || "",
+                  GuestNationality: "IN",
+                  NoOfRooms: 1,
+                  ClientReferenceNo: 0,
+                  IsVoucherBooking: true,
+                  GuestName: `${firstName} ${lastName}`,
+                  GuestEmail: cleanEmail,
+                  GuestPhone: cleanPhone,
+                  Price: Number(totalPayable || 0),
+                  EndUserIp: "192.168.10.10",
+                  PaymentMethod: res.paymentMethod
+                };
+                
+                const bookRes = await bookHotelRoom(bookPayload);
+                navigate("/ticket/confirmation", { state: bookRes.response || bookRes.Response || bookRes, replace: true });
+              } catch (err) {
+                console.error("Hotel Booking failed", err);
+                alert("Hotel Booking failed: " + (err.response?.data?.message || err.message));
+                setIsModalOpen(false);
+              }
+            } else {
+              navigate("/ticket/confirmation", { state: checkoutPayload, replace: true });
+            }
+          }} 
+        />
+      )}
+    </main>
+  );
+}

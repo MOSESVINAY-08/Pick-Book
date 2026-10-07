@@ -1,0 +1,6 @@
+/* Flight Markup List styles sharing Bus Markup design system */
+@import "../../B2C BUS MANAGEMENT/MarkupList/BusMarkupList.css";
+
+.flight-markup-panel {
+  width: 100%;
+}

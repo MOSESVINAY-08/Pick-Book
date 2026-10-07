@@ -1,0 +1,87 @@
+.admin-flight-amend-page {
+  gap: 12px;
+}
+
+.admin-flight-amend-header h1 {
+  font-size: 1.85rem;
+}
+
+.admin-flight-amend-toolbar .admin-chip {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+}
+
+.admin-flight-amend-filters {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-flight-amend-filter-actions {
+  justify-content: flex-start;
+}
+
+.admin-flight-amend-table-head,
+.admin-flight-amend-table-row {
+  grid-template-columns: 1.05fr 1.25fr 1.05fr 0.75fr 1.55fr 0.65fr;
+}
+
+.admin-flight-amend-footnote {
+  min-height: 34px;
+  border-top: 1px solid var(--admin-border);
+  background: var(--admin-soft);
+  color: var(--admin-text);
+  font-size: 0.86rem;
+  padding: 8px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-weight: 700;
+}
+
+.admin-flight-amend-footnote strong {
+  color: var(--admin-primary);
+}
+
+@media (max-width: 1100px) {
+  .admin-flight-amend-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .admin-flight-amend-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-flight-btn-export {
+  background: #1e75ff !important;
+  color: #ffffff !important;
+  border-color: #1e75ff !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  padding: 8px 16px !important;
+  cursor: pointer !important;
+  transition: all 0.22s ease-in-out !important;
+  box-shadow: 0 4px 10px rgba(30, 117, 255, 0.15) !important;
+}
+
+.admin-flight-btn-export:hover {
+  background: #0052d9 !important;
+  border-color: #0052d9 !important;
+  color: #ffffff !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 14px rgba(30, 117, 255, 0.3) !important;
+}
+
+.admin-shell.dark-theme .admin-flight-btn-export {
+  background: #1e75ff !important;
+  color: #ffffff !important;
+  border-color: #1e75ff !important;
+}
+
+.admin-shell.dark-theme .admin-flight-btn-export:hover {
+  background: #0052d9 !important;
+  border-color: #0052d9 !important;
+}
+

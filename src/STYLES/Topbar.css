@@ -1,0 +1,611 @@
+/* Topbar.css - Modern navigation styles with transitions and responsive design */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 1100;
+  min-height: 64px;
+  padding: 8px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--theme-border-soft, #e1ebe7);
+  box-shadow: 0 10px 34px rgba(12, 46, 51, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.94);
+  transition: all 0.3s ease;
+}
+
+/* Base selection states */
+::selection {
+  background: var(--theme-primary, #ff0000);
+  color: #ffffff;
+}
+
+::-moz-selection {
+  background: var(--theme-primary, #ff0000);
+  color: #ffffff;
+}
+
+/* Left Group containing Hamburger & Logo & Nav Links */
+.left-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Hamburger toggle button */
+.hamburger-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--theme-navy, #17242d);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.hamburger-btn:hover {
+  background-color: rgba(0, 155, 143, 0.08);
+}
+
+.brand {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+}
+
+.brand-logo {
+  display: block;
+  height: 30px;
+  width: auto;
+  object-fit: contain;
+  object-position: left center;
+  margin-right: 24px;
+}
+
+/* Scrolling Transition Menu Links */
+.nav-menu-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nav-menu-links.hidden {
+  opacity: 0;
+  transform: translateX(-16px);
+  max-width: 0;
+  margin-left: 0;
+  pointer-events: none;
+}
+
+.nav-menu-links.visible {
+  opacity: 1;
+  transform: translateX(0);
+  max-width: 500px;
+  margin-left: 6px;
+  pointer-events: auto;
+}
+
+/* Menu Items inside Navigation */
+.menu-item {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  outline: none;
+  text-decoration: none;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  color: #506166;
+  font-size: 13.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.menu-item:hover {
+  color: var(--theme-primary-strong, #ff0000);
+  background: rgba(0, 155, 143, 0.08);
+}
+
+.menu-item.active {
+  color: #ffffff !important;
+  background: var(--theme-gradient-action, linear-gradient(135deg, #009b8f, #3656d4)) !important;
+  box-shadow: 0 10px 20px rgba(0, 111, 122, 0.18) !important;
+}
+
+/* Right Section Utility & Auth Layout */
+.right-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.utility-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* User Account Section styling */
+.user-section {
+  position: relative;
+}
+
+.user-name {
+  min-height: 38px;
+  border-radius: 20px;
+  border: 1.5px solid #e2e8f0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.92));
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  color: var(--theme-navy, #17242d);
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.user-name:hover {
+  border-color: #cbd5e1;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.09), inset 0 1px 0 rgba(255, 255, 255, 1);
+  transform: translateY(-1px);
+}
+
+.user-name:focus-visible {
+  outline: none;
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(226, 232, 240, 0.8), 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.user-trigger-name {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-caret {
+  color: #6f84ae;
+  transition: transform 0.2s ease;
+}
+
+.dropdown-caret.open {
+  transform: rotate(180deg);
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 180px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #dce8e3;
+  box-shadow: 0 22px 55px rgba(12, 46, 51, 0.16);
+  padding: 6px;
+  overflow: hidden;
+  animation: dropdown-fade-in 0.2s ease-out;
+}
+
+@keyframes dropdown-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-item {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-decoration: none;
+  color: #253b42;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.dropdown-item:hover {
+  background: rgba(0, 155, 143, 0.08);
+  color: var(--theme-primary-strong, #ff0000);
+}
+
+.dropdown-item.logout {
+  color: #b42318;
+}
+
+.dropdown-item.logout:hover {
+  background: #fff2f2;
+  color: #b42318;
+}
+
+/* ==========================================================================
+   MOBILE SIDE NAV DRAWER OVERLAY
+   ========================================================================== */
+.mobile-drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 2500;
+  display: flex;
+  justify-content: flex-start;
+  animation: modal-backdrop-fade 0.25s ease-out;
+}
+
+.mobile-drawer {
+  position: relative;
+  background-color: #ffffff;
+  width: 290px;
+  height: 100%;
+  box-shadow: 4px 0 25px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  animation: drawer-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border-right: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+@keyframes drawer-slide-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 16px;
+}
+
+.drawer-close-btn {
+  background: rgba(15, 23, 42, 0.05);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.drawer-close-btn:hover {
+  background: rgba(15, 23, 42, 0.1);
+  color: #0f172a;
+}
+
+.drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.drawer-item {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: #475569;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px 16px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.drawer-item:hover {
+  background-color: rgba(0, 155, 143, 0.08);
+  color: var(--theme-primary-strong, #ff0000);
+}
+
+.drawer-item.active {
+  background: var(--theme-gradient-action, linear-gradient(135deg, #009b8f, #3656d4));
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(0, 111, 122, 0.15);
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN BREAKPOINTS
+   ========================================================================== */
+@media (max-width: 1024px) {
+  .topbar {
+    padding: 8px 16px;
+  }
+
+  .hamburger-btn {
+    display: flex; /* Show hamburger button */
+  }
+
+  /* Hide main navigation menu on desktop layout */
+  .nav-menu-links {
+    display: none !important;
+  }
+
+  .utility-links {
+    display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .brand-logo {
+    width: auto;
+    height: 32px;
+  }
+
+  .user-name {
+    min-height: 34px;
+    font-size: 13px;
+    padding: 0 12px;
+    border-radius: 20px;
+  }
+}
+
+/* Topbar Red-Theme Modern Layout (Matches Screenshot) */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 1100;
+  min-height: 60px;
+  height: 60px;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03) !important;
+}
+
+.left-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-menu-links {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.nav-menu-links .menu-item {
+  position: relative;
+  cursor: pointer;
+  border: none;
+  background: transparent !important;
+  font-family: inherit;
+  outline: none;
+  padding: 16px 4px;
+  color: #0f172a !important;
+  font-size: 15px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: none !important;
+}
+
+.nav-menu-links .menu-item svg {
+  color: #0f172a !important;
+  transition: color 0.2s ease;
+}
+
+.nav-menu-links .menu-item:hover {
+  color: #ff0000 !important;
+  background: transparent !important;
+}
+
+.nav-menu-links .menu-item:hover svg {
+  color: #ff0000 !important;
+}
+
+/* Active Nav Item (Red Icon, Red Text, Red Underline Indicator) */
+.nav-menu-links .menu-item.active {
+  color: #ff0000 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-weight: 700 !important;
+}
+
+.nav-menu-links .menu-item.active svg {
+  color: #ff0000 !important;
+}
+
+.nav-menu-links .menu-item.active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: #ff0000;
+  border-radius: 3px 3px 0 0;
+}
+
+/* Right Section Actions */
+.right-section {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.topbar-nav-link {
+  background: transparent;
+  border: none;
+  color: #0f172a;
+  font-size: 14.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  padding: 6px 8px;
+  transition: color 0.2s ease;
+}
+
+.topbar-nav-link svg {
+  color: #0f172a;
+  transition: color 0.2s ease;
+}
+
+.topbar-nav-link:hover {
+  color: #ff0000;
+}
+
+.topbar-nav-link:hover svg {
+  color: #ff0000;
+}
+
+/* Single Login / Sign Up Red Button */
+.topbar-login-btn {
+  background: #ff0000 !important;
+  border: 1.5px solid #ff0000 !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  padding: 8px 18px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.2) !important;
+}
+
+.topbar-login-btn svg {
+  color: #ffffff !important;
+}
+
+.topbar-login-btn:hover {
+  background: #ff0000 !important;
+  border-color: #ff0000 !important;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3) !important;
+}
+
+/* ── AIRBNB-STYLE ANIMATED TOPBAR NAV TABS ── */
+.airbnb-nav-container {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  position: relative !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.menu-item.airbnb-tab-item {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  padding: 8px 16px !important;
+  min-height: 38px !important;
+  border-radius: 8px !important;
+  border: none !important;
+  background: transparent !important;
+  color: #475569 !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: color 0.2s ease !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.menu-item.airbnb-tab-item:hover {
+  color: #0f172a !important;
+  background: rgba(241, 245, 249, 0.6) !important;
+}
+
+.menu-item.airbnb-tab-item.active {
+  color: #ff0000 !important; /* Airbnb Signature Brand Red */
+  font-weight: 700 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.menu-item.airbnb-tab-item.active .tab-icon-wrap {
+  color: #ff0000 !important;
+}
+
+.tab-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.airbnb-tab-indicator {
+  position: absolute !important;
+  bottom: -4px !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 3px !important;
+  background: linear-gradient(90deg, #ff385c, #ff0000) !important;
+  border-radius: 3px !important;
+  box-shadow: 0 2px 10px rgba(225, 29, 72, 0.45) !important;
+}
+

@@ -1,0 +1,537 @@
+/* Base Footer Container */
+.travel-footer {
+  position: relative;
+  overflow: hidden;
+  background-color: #1a1a1a;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240'%3E%3Cpath d='M20 40h10l3-5h3l-2 5h6l2-3h2l-1 3 1 3h-2l-2-3h-6l2 5h-3l-3-5H20zm70 10a10 10 0 1 1 20 0 10 10 0 0 1-20 0zm40 60c-4 0-7 3-7 7 0 5 7 11 7 11s7-6 7-11c0-4-3-7-7-7zm-90 50h6v-2c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v2h6c1.1 0 2 .9 2 2v10c0 1.1-.9 2-2 2H30c-1.1 0-2-.9-2-2v-10c0-1.1.9-2 2-2zm125 15h30l2-4h-34zm25-115a6 6 0 1 0 0-12 6 6 0 0 0 0 12z' fill='none' stroke='rgba(255,255,255,0.035)' stroke-width='1'/%3E%3Cpath d='M10 200 C 50 180, 70 220, 100 200' fill='none' stroke='rgba(255,255,255,0.025)' stroke-dasharray='3,3' stroke-width='1'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  color: #dfdfdf;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13.5px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.footer-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 18px 30px 10px;
+}
+
+/* Modal and Policy backdrop styles */
+.footer-policy-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+}
+
+.footer-policy-modal {
+  background: #ffffff;
+  border-radius: 20px;
+  max-width: 800px;
+  width: 90%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.footer-policy-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.footer-policy-modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.footer-policy-modal-close {
+  background: #f1f5f9;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.2s ease;
+}
+
+.footer-policy-modal-close:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.footer-policy-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  color: #334155;
+  line-height: 1.6;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Pick&book CLEAN LUXURY 4-TIER FOOTER (INCREASED SIZE)
+═══════════════════════════════════════════════════════════════ */
+.pnb-site-footer {
+  background-color: #0b1120;
+  background-image: radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(220, 38, 38, 0.05) 0%, transparent 40%);
+  padding: 16px 24px 10px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #0f172a;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pnb-footer-wrapper {
+  max-width: 1260px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── 1. Top Trust Features Row (4 White Cards) ─────────── */
+.pnb-footer-trust-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+.pnb-trust-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.pnb-trust-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.16);
+}
+
+.pnb-trust-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pnb-trust-svg {
+  color: #ff0000;
+}
+
+.pnb-trust-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.pnb-trust-title {
+  margin: 0 0 2px;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.pnb-trust-sub {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1.25;
+}
+
+/* ── 2. Main Content Card (Large White Card) ──────────── */
+.pnb-footer-main-card {
+  background: #ffffff;
+  border-radius: 22px;
+  padding: 36px 42px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+}
+
+.pnb-footer-main-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr 1fr 1fr;
+  gap: 34px;
+}
+
+.pnb-footer-brand-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.pnb-footer-brand-logo-wrap {
+  cursor: pointer;
+  display: inline-block;
+  margin-bottom: 12px;
+  width: fit-content;
+}
+
+.pnb-footer-brand-logo-img {
+  /* Fluid: scales from 24 px (mobile) up to 40 px (large desktop) */
+  height: clamp(24px, 3vw, 40px);
+  width: auto;
+  object-fit: contain;
+  display: block;
+  transition: height 0.2s ease;
+}
+
+.pnb-footer-brand-desc {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #475569;
+  font-weight: 500;
+  margin: 0;
+  max-width: 320px;
+}
+
+.pnb-footer-links-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.pnb-col-heading {
+  margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.pnb-col-heading-icon {
+  color: #ff0000;
+  flex-shrink: 0;
+}
+
+.pnb-col-links-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pnb-footer-link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  text-align: left;
+  text-decoration: none;
+}
+
+.pnb-link-chevron {
+  color: #ff0000;
+  font-size: 14.5px;
+  font-weight: 800;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.pnb-footer-link:hover {
+  color: #ff0000;
+  transform: translateX(3px);
+}
+
+.pnb-link-active {
+  color: #ff0000;
+  font-weight: 700;
+}
+
+/* ── 3. Payments, App & Social Bar (White Rounded Pill) ── */
+.pnb-footer-bottom-pill {
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 13px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.10);
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.pnb-pill-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pnb-pill-label {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+/* Payment Badges */
+.pnb-payment-badges-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pnb-pay-badge {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 3px 8px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  user-select: none;
+}
+
+.pnb-visa-badge {
+  font-style: italic;
+  font-weight: 900;
+  color: #1a1f71;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.pnb-mc-badge {
+  padding: 3px 7px;
+}
+
+.mc-circle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.mc-red {
+  background: #ff0000;
+  margin-right: -5px;
+}
+
+.mc-yellow {
+  background: #f79e1b;
+  opacity: 0.95;
+}
+
+.pnb-badge-chevron {
+  color: #ff0000;
+  font-size: 13px;
+  font-weight: 800;
+  margin-left: 2px;
+}
+
+.pnb-amex-badge {
+  color: #006fcf;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+/* App Store Badges */
+.pnb-app-badges-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pnb-store-btn {
+  background: #0f172a;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.pnb-store-btn:hover {
+  background: #1e293b;
+  transform: translateY(-1px);
+}
+
+.pnb-store-icon {
+  flex-shrink: 0;
+}
+
+.pnb-store-btn-text {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.pnb-store-sub {
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  opacity: 0.85;
+  line-height: 1;
+}
+
+.pnb-store-name {
+  font-size: 10.5px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+/* Social Circles */
+.pnb-social-circles-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pnb-social-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.pnb-social-circle:hover {
+  transform: scale(1.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.pnb-ig-circle {
+  background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285aeb 90%);
+}
+
+.pnb-fb-circle {
+  background: #1877f2;
+}
+
+.pnb-yt-circle {
+  background: #ff0000;
+}
+
+.pnb-li-circle {
+  background: #0a66c2;
+}
+
+/* ── 4. Bottom Copyright & Legal Line ─────────────────── */
+.pnb-footer-bottom-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11.5px;
+  color: #94a3b8;
+  font-weight: 500;
+  margin-top: 4px;
+  text-align: center;
+}
+
+.pnb-bottom-brand {
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.pnb-bottom-sep {
+  color: #475569;
+}
+
+.pnb-bottom-item {
+  color: #94a3b8;
+}
+
+.pnb-bottom-copyright {
+  color: #94a3b8;
+}
+
+.pnb-bottom-link {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  transition: color 0.2s ease;
+}
+
+.pnb-bottom-link:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .pnb-footer-trust-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .pnb-footer-main-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .pnb-footer-bottom-pill {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 14px;
+  }
+}
+
+@media (max-width: 640px) {
+  .pnb-footer-trust-row {
+    grid-template-columns: 1fr;
+  }
+
+  .pnb-footer-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pnb-footer-main-card {
+    padding: 26px 20px;
+  }
+
+  .pnb-footer-bottom-pill {
+    padding: 16px;
+  }
+
+  .pnb-pill-section {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .pnb-footer-brand-logo-img {
+    height: 24px;
+  }
+}

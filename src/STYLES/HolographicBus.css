@@ -1,0 +1,614 @@
+/* HolographicBus.css — Scoped horizontal bus seat layout matching reference image */
+
+/* ===== Container ===== */
+.hologram-bus-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px 8px; /* Tighter padding for screen fit */
+  overflow: hidden;
+  background: #fff8f5 !important; /* Soft, premium light warm peach background */
+  border-radius: 20px !important;
+  border: 1px solid #ffedd5 !important;
+}
+
+@media (max-width: 760px) {
+  .hologram-bus-container {
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+}
+
+.hologram-floor { display: none; }
+
+/* ===== Bus Shell (Warm orange interior gradient, dark orange border, curved nose) ===== */
+.hologram-bus-shell {
+  position: relative !important;
+  border: 2.5px solid #ea580c !important; /* Premium warm orange border outline */
+  border-radius: 48px 12px 12px 48px !important; /* Curved nose on left, square on right */
+  background: linear-gradient(135deg, #ffffff 0%, #fff5f0 100%) !important; /* Warm interior lighting glow */
+  padding: 8px 8px 8px 84px !important; /* Reduced padding for compact layout */
+  box-shadow: 0 12px 36px rgba(234, 88, 12, 0.06) !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: stretch !important;
+  gap: 12px !important;
+  flex-grow: 1 !important;
+}
+
+/* Side Mirrors (sticking out from curved front nose) */
+.hologram-bus-shell::before,
+.hologram-bus-shell::after {
+  content: "" !important;
+  position: absolute !important;
+  width: 14px !important;
+  height: 6px !important;
+  background: #ea580c !important; /* Matching orange mirror arm */
+  border-radius: 1px !important;
+  z-index: 15 !important;
+}
+/* Top mirror */
+.hologram-bus-shell::before {
+  left: 6px;
+  top: -4px;
+  transform: rotate(-30deg) !important;
+}
+/* Bottom mirror */
+.hologram-bus-shell::after {
+  left: 6px;
+  bottom: -4px;
+  transform: rotate(30deg) !important;
+}
+
+/* ===== Tires/Wheels (Detailed realistic tires) ===== */
+.bus-flow-bus-wheel {
+  position: absolute !important;
+  width: 32px !important;
+  height: 7px !important;
+  background: #090d16 !important; /* Deep black rubber tire */
+  border-radius: 1.5px !important;
+  z-index: 10 !important;
+}
+.bus-flow-bus-wheel::after {
+  content: "" !important;
+  position: absolute !important;
+  left: 8px !important;
+  right: 8px !important;
+  top: 1px !important;
+  bottom: 1px !important;
+  background: #94a3b8 !important; /* Steel hubcap */
+  border-radius: 0.5px !important;
+}
+.bus-flow-bus-wheel.wheel-front-left  { left: 110px; top: -7px; }
+.bus-flow-bus-wheel.wheel-front-right { left: 110px; bottom: -7px; }
+.bus-flow-bus-wheel.wheel-back-left   { right: 60px;  top: -7px; }
+.bus-flow-bus-wheel.wheel-back-right  { right: 60px;  bottom: -7px; }
+
+/* ===== Coach Front (Driver Cabin Sidebar) ===== */
+.bus-flow-coach-front {
+  position: absolute !important;
+  left: 8px !important;
+  top: 8px !important;
+  bottom: 8px !important;
+  width: 68px !important;
+  background: transparent !important;
+  border-right: 1.5px solid #ffedd5 !important; /* Warm dividing line */
+  display: block !important;
+  padding: 0 !important;
+}
+
+/* Windshield (Curved blue translucent glass at front nose) */
+.bus-flow-windshield {
+  position: absolute !important;
+  left: 2px !important;
+  top: 4px !important;
+  bottom: 4px !important;
+  width: 10px !important;
+  border-radius: 16px 0 0 16px !important;
+  border-left: 2px solid rgba(56, 189, 248, 0.6) !important;
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.25) 0%, rgba(56, 189, 248, 0.02) 100%) !important;
+  z-index: 5 !important;
+}
+/* Wipers on Windshield */
+.bus-flow-windshield::before,
+.bus-flow-windshield::after {
+  content: "" !important;
+  position: absolute !important;
+  width: 6px !important;
+  height: 1.5px !important;
+  background: #1e293b !important;
+  left: 1px !important;
+}
+.bus-flow-windshield::before { top: 25%; transform: rotate(-25deg); }
+.bus-flow-windshield::after { bottom: 25%; transform: rotate(25deg); }
+
+/* Steering Wheel (Top-Left of driver cabin) */
+.bus-flow-steering {
+  position: absolute !important;
+  left: 8px !important;
+  top: 6px !important;
+  width: 24px !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 10 !important;
+}
+
+.bus-flow-front-label {
+  display: none !important; /* Hide FRONT label */
+}
+
+/* Driver / Helper Seat SVG Containers */
+.bus-flow-driver-seat {
+  width: 30px !important;
+  height: 30px !important;
+  position: absolute !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  display: block !important;
+}
+
+.bus-flow-driver-seat .seat-svg {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  transform: rotate(-90deg) !important; /* Rotated so the driver faces forward (left) */
+  transform-origin: center !important;
+}
+
+/* Style the driver cabin SVG elements to have orange/yellow styling */
+.bus-flow-driver-seat .seat-frame {
+  stroke: #d97706 !important;
+  fill: #f59e0b !important; /* Orange base frame */
+}
+.bus-flow-driver-seat .seat-cushion {
+  stroke: none !important;
+  fill: #fbbf24 !important; /* Yellow inner cushion */
+}
+.bus-flow-driver-seat .seat-back {
+  stroke: #d97706 !important;
+  fill: #f59e0b !important;
+}
+.bus-flow-driver-seat .seat-arm {
+  stroke: #d97706 !important;
+  fill: #fbbf24 !important;
+}
+.bus-flow-driver-seat .seat-shadow {
+  display: none !important;
+}
+
+/* Driver Seat (Placed directly behind the steering wheel) */
+.bus-flow-driver-seat.driver {
+  left: 34px !important;
+  top: 3px !important; /* Aligned horizontally with the steering wheel */
+}
+
+/* Driver Assistant / Helper Seat (Placed at bottom-left corner of cabin) */
+.bus-flow-driver-seat.helper {
+  left: 34px !important;
+  bottom: 3px !important;
+}
+
+/* Front Entry Door (Cutout step near helper seat - matches the outer container background color) */
+.bus-flow-coach-front::after {
+  content: "" !important;
+  position: absolute !important;
+  left: 26px !important; /* Moved rightwards to prevent overlapping the bottom mirror */
+  bottom: -16px !important; /* Breaks the bottom border of the bus shell */
+  width: 24px !important;
+  height: 6px !important;
+  background: #fff8f5 !important; /* Matches container background */
+  border: 2.5px solid #ea580c !important;
+  border-top: none !important;
+  border-radius: 0 0 3px 3px !important;
+  z-index: 20 !important;
+}
+
+/* ===== Deck & Row Layout ===== */
+.hologram-bus-container .bus-flow-coach-floor {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-grow: 1 !important;
+  width: auto !important;
+  flex: none !important;
+}
+
+.hologram-bus-container .bus-flow-sleeper-layout {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-grow: 1 !important;
+  width: auto !important;
+  flex: none !important;
+}
+
+.hologram-bus-container .bus-flow-vertical-layout {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important; /* Tighter gap between stacked deck shells */
+  align-items: stretch !important;
+  width: max-content !important;
+}
+
+/* Each Deck Box (Blends seamlessly with shell background) */
+.hologram-bus-container .bus-flow-vertical-deck {
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important; /* Seats lay directly on white shell bg */
+  padding: 8px 8px 8px 42px !important; /* Tighter padding for compact look */
+  position: relative !important;
+  box-shadow: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  flex-grow: 1 !important;
+  width: 100% !important;
+}
+
+/* Vertical Label Container on Left */
+.hologram-bus-container .bus-flow-vertical-deck-header {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 32px !important; /* Slightly narrower vertical header */
+  border-right: 1.5px solid #ffedd5 !important; /* Dividing line matching theme */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.hologram-bus-container .bus-flow-vertical-deck-header span {
+  font-family: var(--app-font-family) !important;
+  font-size: 0.72rem !important; /* Slightly smaller vertical label text */
+  font-weight: 800 !important;
+  color: #c2410c !important; /* Dark orange text color */
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  writing-mode: vertical-rl !important;
+  transform: rotate(180deg) !important;
+}
+
+/* Deck Body */
+.hologram-bus-container .bus-flow-vertical-deck-body {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important; /* Tighter row gap */
+  margin: 0 !important;
+  width: 100% !important;
+}
+
+/* Section Grid */
+.hologram-bus-container .bus-flow-vertical-section-grid {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 4px !important; /* Tighter seat column gap */
+}
+
+/* A Column of Seats (stacked vertically) */
+.hologram-bus-container .bus-flow-vertical-row {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  align-items: center !important;
+}
+
+/* A Horizontal Row / Lane (seats flow left to right) */
+.hologram-bus-container .bus-flow-lane-row {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 4px !important;
+  align-items: center !important;
+}
+
+/* Horizontal Aisle Line */
+.hologram-bus-container .bus-flow-vertical-aisle {
+  height: 10px !important; /* Reduced aisle height */
+  width: 100% !important;
+  min-height: 10px !important;
+  background: transparent !important;
+  position: relative !important;
+  margin: 1px 0 !important;
+}
+
+.hologram-bus-container .bus-flow-vertical-aisle::after {
+  content: "" !important;
+  position: absolute !important;
+  left: -6px !important;
+  right: -6px !important;
+  top: 50% !important;
+  border-top: 1px dashed #fdba74 !important; /* Dashed warm orange line */
+  transform: translateY(-50%) !important;
+}
+
+/* ===== Seat Button Sizing & Styling (Single Layer) ===== */
+
+/* Specific selectors to override BusBookingFlow.css container styles completely */
+.bus-flow-page .hologram-bus-container .bus-flow-seat {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  flex: none !important;
+  min-height: unset !important;
+  min-width: unset !important;
+  aspect-ratio: unset !important;
+  padding: 0 !important;
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+}
+
+/* Seater Dimensions */
+.bus-flow-page .hologram-bus-container .bus-flow-seat.is-seater {
+  width: 38px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+}
+
+.bus-flow-page .hologram-bus-container .bus-flow-seat.is-seater .seat-svg {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  transform: rotate(-90deg) !important;
+  transform-origin: center !important;
+}
+
+/* Actual Seater Seat Components visible */
+.bus-flow-page .hologram-bus-container .bus-flow-seat.is-seater .seat-svg .seat-arm,
+.bus-flow-page .hologram-bus-container .bus-flow-seat.is-seater .seat-svg .seat-shadow {
+  display: block !important;
+}
+
+/* Sleeper Dimensions */
+.bus-flow-page .hologram-bus-container .bus-flow-seat.is-sleeper {
+  width: 72px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+}
+
+.bus-flow-page .hologram-bus-container .bus-flow-seat.is-sleeper .seat-svg {
+  position: absolute !important;
+  width: 38px !important;
+  height: 72px !important;
+  left: 17px !important;
+  top: -17px !important;
+  transform: rotate(-90deg) !important;
+  transform-origin: center !important;
+}
+
+/* Hide duplicate CSS pillow detail on sleepers */
+.bus-flow-page .hologram-bus-container .bus-flow-seat--sleeper::after {
+  display: none !important;
+}
+.bus-flow-page .hologram-bus-container .bus-flow-seat.is-sleeper .seat-svg .seat-shadow {
+  display: none !important;
+}
+
+/* Label text (upright, bold, centered in the cushion area) */
+.hologram-bus-container .seat-details {
+  position: absolute !important;
+  top: 50% !important;
+  left: 58% !important;
+  transform: translate(-50%, -50%) !important;
+  font-size: 0.65rem !important;
+  font-weight: 800 !important;
+  z-index: 10 !important;
+  pointer-events: none !important;
+}
+
+/* Seat gap/placeholder */
+.hologram-bus-container .bus-flow-seat-gap {
+  display: block !important;
+  width: 38px !important;
+  height: 38px !important;
+}
+
+/* =========================================================
+   PREMIUM SEAT STATES & COLOR RULES (Warm Orange theme)
+   ========================================================= */
+
+/* --- AVAILABLE SEAT (Warm Orange frame / Peach cushions) --- */
+.hologram-bus-container .bus-flow-seat.status-available .seat-frame {
+  stroke: #fdba74 !important; /* Light warm orange outline */
+  fill: #ffffff !important;
+}
+.hologram-bus-container .bus-flow-seat.status-available .seat-cushion {
+  stroke: #fed7aa !important;
+  fill: #fffaf7 !important; /* Soft warm peach tint */
+}
+.hologram-bus-container .bus-flow-seat.status-available .sleeper-pillow {
+  stroke: #fed7aa !important;
+  fill: #fff3ec !important;
+}
+.hologram-bus-container .bus-flow-seat.status-available .seat-back {
+  stroke: #fdba74 !important;
+  fill: #fffaf7 !important;
+}
+.hologram-bus-container .bus-flow-seat.status-available .seat-arm {
+  stroke: #fdba74 !important;
+  fill: #ffffff !important;
+}
+.hologram-bus-container .bus-flow-seat.status-available .seat-shadow {
+  stroke: none !important;
+  fill: rgba(234, 88, 12, 0.04) !important;
+}
+.hologram-bus-container .bus-flow-seat.status-available .seat-details {
+  color: #c2410c !important; /* Rich amber orange for the number */
+}
+
+/* --- SELECTED SEAT (Deep Orange-Red) --- */
+.hologram-bus-container .bus-flow-seat.status-selected .seat-frame {
+  stroke: #ea580c !important;
+  fill: #ffedd5 !important;
+}
+.hologram-bus-container .bus-flow-seat.status-selected .seat-cushion,
+.hologram-bus-container .bus-flow-seat.status-selected .sleeper-pillow,
+.hologram-bus-container .bus-flow-seat.status-selected .seat-back {
+  stroke: #f97316 !important;
+  fill: #ffedd5 !important;
+}
+.hologram-bus-container .bus-flow-seat.status-selected .seat-arm {
+  stroke: #f97316 !important;
+  fill: #ffedd5 !important;
+}
+.hologram-bus-container .bus-flow-seat.status-selected .seat-shadow {
+  stroke: none !important;
+  fill: rgba(234, 88, 12, 0.08) !important;
+}
+.hologram-bus-container .bus-flow-seat.status-selected .seat-details {
+  color: #c2410c !important;
+}
+
+/* --- BOOKED SEAT (Muted Warm Grey/X) --- */
+.hologram-bus-container .bus-flow-seat.status-booked .seat-frame {
+  stroke: #cbd5e1 !important;
+  fill: #f1f5f9 !important;
+}
+.hologram-bus-container .bus-flow-seat.status-booked .seat-cushion,
+.hologram-bus-container .bus-flow-seat.status-booked .sleeper-pillow,
+.hologram-bus-container .bus-flow-seat.status-booked .seat-back {
+  stroke: #e2e8f0 !important;
+  fill: #e2e8f0 !important;
+}
+.hologram-bus-container .bus-flow-seat.status-booked .seat-arm {
+  stroke: #cbd5e1 !important;
+  fill: #e2e8f0 !important;
+}
+.hologram-bus-container .bus-flow-seat.status-booked .seat-shadow {
+  stroke: none !important;
+  fill: rgba(0, 0, 0, 0.02) !important;
+}
+.hologram-bus-container .bus-flow-seat.status-booked .seat-details {
+  color: #94a3b8 !important;
+}
+
+/* --- BOOKED FEMALE SEAT (Pink-Coral/F) --- */
+.hologram-bus-container .bus-flow-seat.status-booked-female .seat-frame {
+  stroke: #ec4899 !important;
+  fill: #fce7f3 !important;
+}
+.hologram-bus-container .bus-flow-seat.status-booked-female .seat-cushion,
+.hologram-bus-container .bus-flow-seat.status-booked-female .sleeper-pillow,
+.hologram-bus-container .bus-flow-seat.status-booked-female .seat-back {
+  stroke: #f472b6 !important;
+  fill: #fbcfe8 !important;
+}
+.hologram-bus-container .bus-flow-seat.status-booked-female .seat-arm {
+  stroke: #f472b6 !important;
+  fill: #fbcfe8 !important;
+}
+.hologram-bus-container .bus-flow-seat.status-booked-female .seat-shadow {
+  stroke: none !important;
+  fill: rgba(236, 72, 153, 0.1) !important;
+}
+.hologram-bus-container .bus-flow-seat.status-booked-female .seat-details {
+  color: #be185d !important;
+}
+
+/* --- FEMALE ADJACENT / FEMALE AVAILABLE SEAT (Dashed Pink-Coral) --- */
+.hologram-bus-container .bus-flow-seat.status-female-adjacent .seat-frame {
+  stroke: #db2777 !important;
+  fill: #fff5f7 !important;
+  stroke-dasharray: 2,2 !important;
+}
+.hologram-bus-container .bus-flow-seat.status-female-adjacent .seat-cushion,
+.hologram-bus-container .bus-flow-seat.status-female-adjacent .sleeper-pillow,
+.hologram-bus-container .bus-flow-seat.status-female-adjacent .seat-back {
+  stroke: #f472b6 !important;
+  fill: #ffe4e6 !important;
+}
+.hologram-bus-container .bus-flow-seat.status-female-adjacent .seat-arm {
+  stroke: #f472b6 !important;
+  fill: #ffe4e6 !important;
+}
+.hologram-bus-container .bus-flow-seat.status-female-adjacent .seat-shadow {
+  stroke: none !important;
+  fill: rgba(219, 39, 119, 0.1) !important;
+}
+.hologram-bus-container .bus-flow-seat.status-female-adjacent .seat-details {
+  color: #db2777 !important;
+}
+
+/* --- BOOKED MALE SEAT (Blue/M) --- */
+.hologram-bus-container .bus-flow-seat.status-booked-male .seat-frame {
+  stroke: #2563eb !important;
+  fill: #dbeafe !important;
+}
+.hologram-bus-container .bus-flow-seat.status-booked-male .seat-cushion,
+.hologram-bus-container .bus-flow-seat.status-booked-male .sleeper-pillow,
+.hologram-bus-container .bus-flow-seat.status-booked-male .seat-back {
+  stroke: #3b82f6 !important;
+  fill: #bfdbfe !important;
+}
+.hologram-bus-container .bus-flow-seat.status-booked-male .seat-arm {
+  stroke: #3b82f6 !important;
+  fill: #bfdbfe !important;
+}
+.hologram-bus-container .bus-flow-seat.status-booked-male .seat-shadow {
+  stroke: none !important;
+  fill: rgba(37, 99, 235, 0.1) !important;
+}
+.hologram-bus-container .bus-flow-seat.status-booked-male .seat-details {
+  color: #1d4ed8 !important;
+}
+
+/* --- MALE ADJACENT / MALE AVAILABLE SEAT (Dashed Blue) --- */
+.hologram-bus-container .bus-flow-seat.status-male-adjacent .seat-frame {
+  stroke: #1d4ed8 !important;
+  fill: #eff6ff !important;
+  stroke-dasharray: 2,2 !important;
+}
+.hologram-bus-container .bus-flow-seat.status-male-adjacent .seat-cushion,
+.hologram-bus-container .bus-flow-seat.status-male-adjacent .sleeper-pillow,
+.hologram-bus-container .bus-flow-seat.status-male-adjacent .seat-back {
+  stroke: #3b82f6 !important;
+  fill: #dbeafe !important;
+}
+.hologram-bus-container .bus-flow-seat.status-male-adjacent .seat-arm {
+  stroke: #3b82f6 !important;
+  fill: #dbeafe !important;
+}
+.hologram-bus-container .bus-flow-seat.status-male-adjacent .seat-shadow {
+  stroke: none !important;
+  fill: rgba(29, 78, 216, 0.1) !important;
+}
+.hologram-bus-container .bus-flow-seat.status-male-adjacent .seat-details {
+  color: #1d4ed8 !important;
+}
+
+/* ===== Expand Panel for summary actions (Boarding & Dropping / Cancellation Policies) ===== */
+.hologram-bus-container .bus-flow-expand-panel {
+  border-top: 1px dashed #ffedd5 !important;
+  background: #fffaf7 !important; /* Soft warm peachy background matching theme */
+  padding: 10px 14px !important;
+  border-radius: 0 0 12px 12px !important;
+}
+
+.hologram-bus-container .bus-flow-expand-panel p {
+  margin: 0 !important;
+  color: #c2410c !important; /* Deep warm orange/brown text */
+  font-size: 0.78rem !important;
+  line-height: 1.4 !important;
+}
+
+/* ===== Legend overrides for Male Booked & Beside Male ===== */
+.bus-flow-page .legend.male-booked::before {
+  border-color: #2563eb !important;
+  background: linear-gradient(135deg, #e0f2fe, #bae6fd) !important;
+}
+.bus-flow-page .legend.male-adjacent::before {
+  border-color: #2563eb !important;
+  background: #ffffff !important;
+  box-shadow: inset 0 0 0 2px #93c5fd !important;
+}
+

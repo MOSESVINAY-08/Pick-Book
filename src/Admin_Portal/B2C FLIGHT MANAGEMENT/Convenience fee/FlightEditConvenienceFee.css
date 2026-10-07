@@ -1,0 +1,289 @@
+.admin-flight-fee-edit-page {
+  gap: 12px;
+}
+
+.admin-flight-fee-edit-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-flight-fee-edit-header h1 {
+  font-size: 1.86rem;
+  font-weight: 600;
+}
+
+.admin-flight-fee-list-btn {
+  min-height: 34px;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 12px;
+  color: #fff;
+  font-size: 0.84rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--admin-primary), var(--admin-primary-strong));
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.admin-flight-fee-edit-shell {
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  background: var(--admin-surface);
+  overflow: hidden;
+}
+
+.admin-flight-fee-edit-row {
+  display: grid;
+  grid-template-columns: 1.2fr 2fr 1fr 2fr;
+  border-top: 1px solid var(--admin-border);
+}
+
+.admin-flight-fee-edit-label {
+  min-height: 48px;
+  border-right: 1px dashed var(--admin-border);
+  background: var(--admin-soft);
+  color: var(--admin-text);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 1.02rem;
+  font-weight: 500;
+}
+
+.admin-flight-fee-edit-field {
+  min-height: 48px;
+  border-right: 1px solid var(--admin-border);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+}
+
+.admin-flight-fee-edit-field:last-child {
+  border-right: 0;
+}
+
+.admin-flight-fee-edit-field input,
+.admin-flight-fee-edit-field select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--admin-border);
+  border-radius: 9px;
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  font-size: 1.02rem;
+  font-weight: 400;
+  padding: 0 10px;
+}
+
+.admin-flight-fee-edit-field input:focus,
+.admin-flight-fee-edit-field select:focus {
+  outline: none;
+  border-color: var(--admin-primary);
+  box-shadow: 0 0 0 3px rgba(74, 15, 26, 0.14);
+}
+
+.admin-flight-fee-edit-actions {
+  display: flex;
+  justify-content: flex-start;
+  padding: 12px 10px 14px;
+}
+
+.admin-flight-fee-update-btn {
+  min-height: 40px;
+  border: 0;
+  border-radius: 12px;
+  padding: 0 32px;
+  font-size: 1.04rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--admin-primary), var(--admin-primary-strong));
+  box-shadow: 0 12px 20px rgba(47, 47, 47, 0.18);
+  cursor: pointer;
+}
+
+@media (max-width: 1100px) {
+  .admin-flight-fee-edit-row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-flight-fee-edit-label,
+  .admin-flight-fee-edit-field {
+    border-right: 0;
+    border-bottom: 1px solid var(--admin-border);
+  }
+
+  .admin-flight-fee-edit-field:last-child {
+    border-bottom: 0;
+  }
+}
+
+@media (max-width: 620px) {
+  .admin-flight-fee-list-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .admin-flight-fee-update-btn {
+    width: 100%;
+    max-width: 280px;
+  }
+}
+
+/* Dark theme overrides */
+.admin-shell.dark-theme .admin-flight-fee-edit-shell {
+  background: #0f172a !important;
+  border-color: #1e293b !important;
+}
+
+.admin-shell.dark-theme .admin-flight-fee-edit-row {
+  border-top-color: #1e293b !important;
+}
+
+.admin-shell.dark-theme .admin-flight-fee-edit-label {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border-right-color: #334155 !important;
+  border-bottom-color: #1e293b !important;
+}
+
+.admin-shell.dark-theme .admin-flight-fee-edit-field {
+  border-right-color: #1e293b !important;
+  border-bottom-color: #1e293b !important;
+}
+
+.admin-shell.dark-theme .admin-flight-fee-edit-field input,
+.admin-shell.dark-theme .admin-flight-fee-edit-field select {
+  background-color: #334155 !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+.admin-shell.dark-theme .admin-flight-fee-edit-field input:focus,
+.admin-shell.dark-theme .admin-flight-fee-edit-field select:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+}
+
+.admin-shell.dark-theme .admin-flight-fee-list-btn,
+.admin-shell.dark-theme .admin-flight-fee-update-btn {
+  background: linear-gradient(135deg, #1e75ff, #0052d9) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.admin-shell.dark-theme .admin-flight-fee-list-btn:hover,
+.admin-shell.dark-theme .admin-flight-fee-update-btn:hover {
+  box-shadow: 0 4px 12px rgba(30, 117, 255, 0.4) !important;
+}
+
+.admin-shell.dark-theme .admin-flight-fee-edit-field input:disabled {
+  background-color: #0f172a !important;
+  color: #64748b !important;
+  border-color: #1e293b !important;
+  cursor: not-allowed !important;
+  opacity: 0.8 !important;
+}
+
+/* Make sure select has custom arrow visible in dark theme */
+.admin-shell.dark-theme .admin-flight-fee-edit-field select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+  background-size: 16px !important;
+  padding-right: 30px !important;
+}
+
+.admin-shell.dark-theme .admin-flight-fee-edit-header h1 {
+  color: #ffffff !important;
+}
+
+.admin-shell.dark-theme .admin-flight-fee-edit-field input:not(:disabled),
+.admin-shell.dark-theme .admin-flight-fee-edit-field select:not(:disabled) {
+  color: #ffffff !important;
+}
+
+/* Light/White theme red style dropdown & inputs overrides */
+.admin-flight-fee-edit-field select,
+.admin-flight-fee-edit-field input {
+  border: 1px solid #d93025 !important;
+}
+
+.admin-flight-fee-edit-field select:hover,
+.admin-flight-fee-edit-field input:hover {
+  border-color: #d93025 !important;
+}
+
+.admin-flight-fee-edit-field select:focus,
+.admin-flight-fee-edit-field input:focus {
+  outline: none !important;
+  border-color: #d93025 !important;
+  box-shadow: 0 0 0 3px rgba(217, 48, 37, 0.15) !important;
+}
+
+.admin-flight-fee-edit-field select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.admin-flight-fee-edit-field select option:checked,
+.admin-flight-fee-edit-field select option:hover,
+.admin-flight-fee-edit-field select option:focus {
+  background-color: #fee2e2 !important;
+  color: #d93025 !important;
+  box-shadow: 0 0 10px 100px #fee2e2 inset !important;
+  -webkit-text-fill-color: #d93025 !important;
+}
+
+/* Dark theme blue style dropdown & inputs overrides */
+.admin-shell.dark-theme .admin-flight-fee-edit-field select,
+.admin-shell.dark-theme .admin-flight-fee-edit-field input {
+  border: 1px solid #475569 !important; /* Gray border default in dark theme */
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.admin-shell.dark-theme .admin-flight-fee-edit-field select:hover,
+.admin-shell.dark-theme .admin-flight-fee-edit-field input:hover {
+  border-color: #3b82f6 !important; /* Blue on hover */
+}
+
+.admin-shell.dark-theme .admin-flight-fee-edit-field select:focus,
+.admin-shell.dark-theme .admin-flight-fee-edit-field input:focus {
+  outline: none !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+}
+
+.admin-shell.dark-theme .admin-flight-fee-edit-field select option {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+}
+
+.admin-shell.dark-theme .admin-flight-fee-edit-field select option:checked,
+.admin-shell.dark-theme .admin-flight-fee-edit-field select option:hover,
+.admin-shell.dark-theme .admin-flight-fee-edit-field select option:focus {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+  color: #3b82f6 !important;
+  box-shadow: 0 0 10px 100px rgba(59, 130, 246, 0.2) inset !important;
+  -webkit-text-fill-color: #3b82f6 !important;
+}
+
+.admin-shell.dark-theme .admin-flight-fee-edit-field input:disabled {
+  background-color: #1a2333 !important;
+  color: #94a3b8 !important;
+  border-color: #334155 !important;
+  cursor: not-allowed !important;
+  opacity: 0.85 !important;
+}
+
+.admin-shell.dark-theme .admin-flight-fee-edit-field input::placeholder {
+  color: #64748b !important;
+}
+
